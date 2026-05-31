@@ -8,6 +8,8 @@ import {
 } from "react-router"
 
 import type { Route } from "./+types/root"
+import { Toaster } from "~/components/ui/sonner"
+import { TooltipProvider } from "~/components/ui/tooltip"
 import "./app.css"
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -20,7 +22,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body>
-        {children}
+        <TooltipProvider>
+          {children}
+          <Toaster position="top-right" />
+        </TooltipProvider>
         <ScrollRestoration />
         <Scripts />
       </body>

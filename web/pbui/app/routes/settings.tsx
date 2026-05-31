@@ -1,114 +1,454 @@
-import { type FormEvent, useState } from "react"
+import { type FormEvent, useMemo, useState } from "react"
+import { Eye, EyeOff, Pencil, Plus, Save, Trash2, X } from "lucide-react"
 import { useLoaderData } from "react-router"
-import { api } from "~/lib/api"
+import { toast } from "sonner"
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog"
+import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "~/components/ui/card"
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "~/components/ui/dialog"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "~/components/ui/card"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table"
+import { api } from "~/lib/api"
 
 interface Setting {
   key: string
   value: string
 }
 
+type FormErrors = Partial<Record<keyof Setting, string>>
+
+const propertyKeyPattern = /^[a-z][a-z0-9]*(\.[a-z0-9][a-z0-9_-]*)*$/
+const secretPattern = /(password|secret|token|credential|private|api[_-]?key)/i
+
 export async function clientLoader() {
   const settings = await api.get<Setting[]>("/api/settings")
   return { settings }
 }
 
+function getCategory(key: string) {
+  return key.includes(".") ? key.split(".")[0] : "general"
+}
+
+function getValueKind(setting: Setting) {
+  if (secretPattern.test(setting.key)) return "Secret"
+  if (/^(true|false)$/i.test(setting.value)) return "Boolean"
+  if (/^-?\d+(\.\d+)?$/.test(setting.value)) return "Number"
+  return "Text"
+}
+
+function isSecret(setting: Setting) {
+  return getValueKind(setting) === "Secret"
+}
+
+function maskValue(value: string) {
+  if (!value) return "Not set"
+  return "************"
+}
+
+function validate(form: Setting): FormErrors {
+  const errors: FormErrors = {}
+  const key = form.key.trim()
+  const value = form.value.trim()
+
+  if (!key) {
+    errors.key = "Property key is required."
+  } else if (!propertyKeyPattern.test(key)) {
+    errors.key = "Use lowercase dotted keys, for example smtp.host."
+  }
+
+  if (!value) {
+    errors.value = "Value is required."
+  } else if (value.length > 1000) {
+    errors.value = "Value must be 1000 characters or fewer."
+  }
+
+  return errors
+}
+
 export default function SettingsPage() {
   const { settings: initial } = useLoaderData<typeof clientLoader>()
   const [settings, setSettings] = useState<Setting[]>(initial)
-  const [form, setForm] = useState({ key: "", value: "" })
+  const [form, setForm] = useState<Setting>({ key: "", value: "" })
+  const [visibleSecrets, setVisibleSecrets] = useState<Set<string>>(new Set())
+  const [propertyDialogOpen, setPropertyDialogOpen] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
+  const [deletingKey, setDeletingKey] = useState<string | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<Setting | null>(null)
+  const [errors, setErrors] = useState<FormErrors>({})
+
+  const sortedSettings = useMemo(
+    () => [...settings].sort((a, b) => a.key.localeCompare(b.key)),
+    [settings]
+  )
+
+  const editingExisting = settings.some((setting) => setting.key === form.key)
+  const formIsSecret = secretPattern.test(form.key)
+
+  const updateField =
+    (field: keyof Setting) => (event: React.ChangeEvent<HTMLInputElement>) => {
+      setForm((current) => ({ ...current, [field]: event.target.value }))
+      setErrors((current) => ({ ...current, [field]: undefined }))
+    }
+
+  const edit = (setting: Setting) => {
+    setForm({ ...setting })
+    setErrors({})
+    setPropertyDialogOpen(true)
+  }
+
+  const resetForm = () => {
+    setForm({ key: "", value: "" })
+    setErrors({})
+  }
+
+  const addProperty = () => {
+    resetForm()
+    setPropertyDialogOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return
+    const setting = pendingDelete
+
+    setDeletingKey(setting.key)
+    try {
+      await api.delete(`/api/settings/${encodeURIComponent(setting.key)}`)
+      setSettings((prev) => prev.filter((s) => s.key !== setting.key))
+      if (form.key === setting.key) resetForm()
+      toast.success("Property deleted", {
+        description: `${setting.key} has been removed.`,
+      })
+      setPendingDelete(null)
+    } catch {
+      toast.error("Failed to delete property")
+    } finally {
+      setDeletingKey(null)
+    }
+  }
+
+  const toggleSecret = (key: string) => {
+    setVisibleSecrets((current) => {
+      const next = new Set(current)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
-    setError(null)
-    setSuccess(false)
+
+    const trimmed = {
+      key: form.key.trim(),
+      value: form.value.trim(),
+    }
+    const nextErrors = validate(trimmed)
+
+    setErrors(nextErrors)
+
+    if (Object.keys(nextErrors).length > 0) return
+
     setSaving(true)
     try {
-      await api.put("/api/settings", form)
+      await api.put("/api/settings", trimmed)
       setSettings((prev) => {
-        const idx = prev.findIndex((s) => s.key === form.key)
+        const idx = prev.findIndex((s) => s.key === trimmed.key)
         if (idx >= 0) {
           const updated = [...prev]
-          updated[idx] = { ...form }
+          updated[idx] = { ...trimmed }
           return updated
         }
-        return [...prev, { ...form }]
+        return [...prev, { ...trimmed }]
       })
       setForm({ key: "", value: "" })
-      setSuccess(true)
+      setPropertyDialogOpen(false)
+      toast.success("Property saved", {
+        description: `${trimmed.key} has been updated.`,
+      })
     } catch {
-      setError("Failed to save setting.")
+      toast.error("Failed to save property")
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <div>
-      <div className="mb-8">
+    <div className="space-y-6">
+      <div>
         <h1 className="text-xl font-semibold">Settings</h1>
-        <p className="text-sm text-muted-foreground mt-1">Organization-level configuration</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Manage organization-level configuration properties used by ProBeacon.
+        </p>
       </div>
 
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="text-sm">Current settings</CardTitle>
+      <Card>
+        <CardHeader className="gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <CardTitle className="text-sm">
+                Configuration properties
+              </CardTitle>
+              <CardDescription>
+                Key/value settings grouped by namespace. Secret-looking values
+                are masked by default.
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">{settings.length} total</Badge>
+              <Button type="button" size="sm" onClick={addProperty}>
+                <Plus />
+                Add property
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          {settings.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No settings yet.</p>
-          ) : (
-            <div className="divide-y">
-              {settings.map((s) => (
-                <div key={s.key} className="py-2 flex items-center justify-between">
-                  <span className="text-sm font-mono">{s.key}</span>
-                  <span className="text-sm text-muted-foreground">{s.value}</span>
-                </div>
-              ))}
+          {sortedSettings.length === 0 ? (
+            <div className="rounded-md border border-dashed px-4 py-10 text-center">
+              <p className="text-sm font-medium">No properties yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Add your first property to configure this workspace.
+              </p>
+              <Button type="button" className="mt-4" onClick={addProperty}>
+                <Plus />
+                Add property
+              </Button>
             </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Property</TableHead>
+                  <TableHead>Value</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="w-24 text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedSettings.map((setting) => {
+                  const secret = isSecret(setting)
+                  const revealed = visibleSecrets.has(setting.key)
+                  const isGeneral = getCategory(setting.key) === "general"
+
+                  return (
+                    <TableRow key={setting.key}>
+                      <TableCell>
+                        <div className="flex min-w-56 flex-col gap-1">
+                          <span className="font-mono text-sm">
+                            {setting.key}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {getCategory(setting.key)}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="max-w-[28rem]">
+                        <div className="flex items-center gap-2">
+                          <span className="min-w-0 truncate text-muted-foreground">
+                            {secret && !revealed
+                              ? maskValue(setting.value)
+                              : setting.value}
+                          </span>
+                          {secret && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-xs"
+                              aria-label={
+                                revealed
+                                  ? "Hide secret value"
+                                  : "Show secret value"
+                              }
+                              onClick={() => toggleSecret(setting.key)}
+                            >
+                              {revealed ? <EyeOff /> : <Eye />}
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={secret ? "destructive" : "secondary"}>
+                          {getValueKind(setting)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`Edit ${setting.key}`}
+                            onClick={() => edit(setting)}
+                          >
+                            <Pencil />
+                          </Button>
+                          {isGeneral && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              className="text-muted-foreground hover:text-destructive"
+                              aria-label={`Delete ${setting.key}`}
+                              disabled={deletingKey === setting.key}
+                              onClick={() => setPendingDelete(setting)}
+                            >
+                              <Trash2 />
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm">Add / update setting</CardTitle>
-          <CardDescription>Upserts by key</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={submit} className="flex gap-3 items-end">
-            <div className="flex-1 flex flex-col gap-1.5">
-              <Label>Key</Label>
-              <Input
-                value={form.key}
-                onChange={(e) => setForm((f) => ({ ...f, key: e.target.value }))}
-                placeholder="smtp.host"
-                required
-              />
+      <Dialog open={propertyDialogOpen} onOpenChange={setPropertyDialogOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <DialogTitle>
+                {editingExisting ? "Update property" : "Add property"}
+              </DialogTitle>
+              {editingExisting && <Badge variant="secondary">Editing</Badge>}
             </div>
-            <div className="flex-1 flex flex-col gap-1.5">
-              <Label>Value</Label>
-              <Input
-                value={form.value}
-                onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))}
-                placeholder="mail.acme.com"
-                required
-              />
+            <DialogDescription>
+              Use dotted keys such as smtp.host or auth.session_timeout.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={submit} className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="property-key">Key</Label>
+                <Input
+                  id="property-key"
+                  value={form.key}
+                  onChange={updateField("key")}
+                  placeholder="smtp.host"
+                  aria-invalid={Boolean(errors.key)}
+                />
+                {errors.key ? (
+                  <p className="text-xs text-destructive">{errors.key}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Lowercase dotted namespace, no spaces.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1.5 sm:col-span-2">
+                <Label htmlFor="property-value">Value</Label>
+                <Input
+                  id="property-value"
+                  type={formIsSecret ? "password" : "text"}
+                  value={form.value}
+                  onChange={updateField("value")}
+                  placeholder={
+                    formIsSecret ? "Enter secret value" : "mail.acme.com"
+                  }
+                  aria-invalid={Boolean(errors.value)}
+                />
+                {errors.value ? (
+                  <p className="text-xs text-destructive">{errors.value}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Secret keys are masked in the table.
+                  </p>
+                )}
+              </div>
             </div>
-            <Button type="submit" disabled={saving}>
-              {saving ? "Saving…" : "Save"}
-            </Button>
+
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </DialogClose>
+              {(form.key || form.value) && (
+                <Button type="button" variant="outline" onClick={resetForm}>
+                  <X />
+                  Clear
+                </Button>
+              )}
+              <Button type="submit" disabled={saving}>
+                <Save />
+                {saving ? "Saving..." : editingExisting ? "Update" : "Save"}
+              </Button>
+            </DialogFooter>
           </form>
-          {error && <p className="text-sm text-destructive mt-3">{error}</p>}
-          {success && <p className="text-sm text-green-600 mt-3">Saved.</p>}
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDelete(null)
+        }}
+      >
+        <AlertDialogContent className="rounded-lg shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-destructive/10 text-destructive">
+              <Trash2 className="size-5" />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Delete this property?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="font-mono">{pendingDelete?.key}</span> will be
+              permanently removed. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deletingKey !== null}
+              onClick={(event) => {
+                event.preventDefault()
+                void confirmDelete()
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

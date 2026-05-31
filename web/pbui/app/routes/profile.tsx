@@ -1,6 +1,7 @@
 import { type FormEvent, useState } from "react"
 import { useLoaderData, useRevalidator } from "react-router"
 import { TriangleAlert } from "lucide-react"
+import { toast } from "sonner"
 import { api } from "~/lib/api"
 import { getRefreshToken, getSessionId, setSession } from "~/lib/auth"
 import { Button } from "~/components/ui/button"
@@ -20,6 +21,8 @@ interface Profile {
   displayName: string
   role: string
 }
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 export async function clientLoader() {
   const profile = await api.get<Profile>("/api/users/me")
@@ -43,8 +46,10 @@ export default function ProfilePage() {
     email: initial.email,
   })
   const [infoSaving, setInfoSaving] = useState(false)
-  const [infoError, setInfoError] = useState<string | null>(null)
-  const [infoSuccess, setInfoSuccess] = useState(false)
+  const trimmedEmail = info.email.trim()
+  const emailChanged = trimmedEmail !== initial.email
+  const emailValid = emailPattern.test(trimmedEmail)
+  const canSaveInfo = emailChanged && emailValid
 
   const [pw, setPw] = useState({
     currentPassword: "",
@@ -52,8 +57,6 @@ export default function ProfilePage() {
     confirmPassword: "",
   })
   const [pwSaving, setPwSaving] = useState(false)
-  const [pwError, setPwError] = useState<string | null>(null)
-  const [pwSuccess, setPwSuccess] = useState(false)
 
   async function refreshJwt() {
     const refreshToken = getRefreshToken()
@@ -74,18 +77,20 @@ export default function ProfilePage() {
 
   const saveInfo = async (e: FormEvent) => {
     e.preventDefault()
-    setInfoError(null)
-    setInfoSuccess(false)
+    if (!canSaveInfo) return
+
     setInfoSaving(true)
     try {
       await api.patch("/api/users/me", {
         displayName: info.displayName,
-        email: info.email,
+        email: trimmedEmail,
       })
-      setInfoSuccess(true)
+      toast.success("Profile updated")
       await refreshJwt()
     } catch (err: unknown) {
-      setInfoError(err instanceof Error ? err.message : "Failed to save.")
+      toast.error(
+        err instanceof Error ? err.message : "Failed to save profile."
+      )
     } finally {
       setInfoSaving(false)
     }
@@ -93,15 +98,13 @@ export default function ProfilePage() {
 
   const savePassword = async (e: FormEvent) => {
     e.preventDefault()
-    setPwError(null)
-    setPwSuccess(false)
 
     if (pw.newPassword !== pw.confirmPassword) {
-      setPwError("New passwords do not match.")
+      toast.error("New passwords do not match")
       return
     }
     if (pw.newPassword.length < 8) {
-      setPwError("Password must be at least 8 characters.")
+      toast.error("Password must be at least 8 characters")
       return
     }
 
@@ -111,10 +114,12 @@ export default function ProfilePage() {
         currentPassword: pw.currentPassword,
         newPassword: pw.newPassword,
       })
-      setPwSuccess(true)
       setPw({ currentPassword: "", newPassword: "", confirmPassword: "" })
+      toast.success("Password updated")
     } catch (err: unknown) {
-      setPwError(err instanceof Error ? err.message : "Failed to update password.")
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update password."
+      )
     } finally {
       setPwSaving(false)
     }
@@ -135,7 +140,9 @@ export default function ProfilePage() {
           <div>
             <p className="font-medium">Set a real email address</p>
             <p className="mt-0.5 text-orange-700 dark:text-orange-400">
-              You're using a temporary login identifier. Configure SMTP under Settings, then update your email here to enable notifications and account recovery.
+              You're using a temporary login identifier. Configure SMTP under
+              Settings, then update your email here to enable notifications and
+              account recovery.
             </p>
           </div>
         </div>
@@ -144,7 +151,9 @@ export default function ProfilePage() {
       <Card>
         <CardHeader>
           <CardTitle>Personal info</CardTitle>
-          <CardDescription>Update your display name and email address.</CardDescription>
+          <CardDescription>
+            Update your display name and email address.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={saveInfo} className="space-y-4">
@@ -163,28 +172,29 @@ export default function ProfilePage() {
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
-                type="text"
+                type="email"
                 value={info.email}
                 onChange={(e) =>
                   setInfo((f) => ({ ...f, email: e.target.value }))
                 }
                 required
               />
-              {info.email.includes("@") && !info.email.startsWith(initial.email) && (
+              {emailChanged && !emailValid && (
+                <p className="text-xs text-destructive">
+                  Enter a valid email address.
+                </p>
+              )}
+              {emailChanged && emailValid && (
                 <p className="text-xs text-muted-foreground">
                   Changing your email will require re-verification.
                 </p>
               )}
             </div>
-            {infoError && (
-              <p className="text-sm text-destructive">{infoError}</p>
+            {canSaveInfo && (
+              <Button type="submit" disabled={infoSaving}>
+                {infoSaving ? "Saving..." : "Save changes"}
+              </Button>
             )}
-            {infoSuccess && (
-              <p className="text-sm text-green-600">Profile updated.</p>
-            )}
-            <Button type="submit" disabled={infoSaving}>
-              {infoSaving ? "Saving…" : "Save changes"}
-            </Button>
           </form>
         </CardContent>
       </Card>
@@ -237,10 +247,6 @@ export default function ProfilePage() {
                 autoComplete="new-password"
               />
             </div>
-            {pwError && <p className="text-sm text-destructive">{pwError}</p>}
-            {pwSuccess && (
-              <p className="text-sm text-green-600">Password updated.</p>
-            )}
             <Button type="submit" disabled={pwSaving}>
               {pwSaving ? "Updating…" : "Update password"}
             </Button>

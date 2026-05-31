@@ -2,16 +2,18 @@ using System.Security.Cryptography;
 using System.Text;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using ProBeacon.Application.Common.Interfaces;
+using ProBeacon.Application.Common.Models;
+using ProBeacon.Application.Common.Options;
 
 namespace ProBeacon.Application.Auth.Commands.SendVerificationEmail;
 
 public class SendVerificationEmailCommandHandler(
     IApplicationDbContext db,
-    IEmailSender emailSender,
+    IEmailJobPublisher publisher,
     IRequestContext requestContext,
-    ILogger<SendVerificationEmailCommandHandler> logger)
+    IOptions<AppOptions> appOptions)
     : ICommandHandler<SendVerificationEmailCommand>
 {
     public async ValueTask<Unit> Handle(SendVerificationEmailCommand request, CancellationToken cancellationToken)
@@ -29,17 +31,14 @@ public class SendVerificationEmailCommandHandler(
         user.SetVerificationToken(tokenHash, DateTime.UtcNow.AddHours(24));
         await db.SaveChangesAsync(cancellationToken);
 
-        var verificationUrl = $"{requestContext.BaseUrl}/verify-email?token={rawToken}";
-        var html = BuildEmailHtml(user.DisplayName, verificationUrl);
+        var baseUrl = string.IsNullOrWhiteSpace(appOptions.Value.FrontendUrl)
+            ? requestContext.BaseUrl
+            : appOptions.Value.FrontendUrl.TrimEnd('/');
+        var verificationUrl = $"{baseUrl}/verify-email?token={rawToken}";
 
-        try
-        {
-            await emailSender.SendAsync(user.Email, "Verify your ProBeacon email", html, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Failed to send verification email to {Email}", user.Email);
-        }
+        await publisher.PublishAsync(
+            new EmailJob(user.TenantId, user.Email, "Verify your ProBeacon email", BuildEmailHtml(user.DisplayName, verificationUrl)),
+            cancellationToken);
 
         return default;
     }

@@ -2,5 +2,5 @@ namespace ProBeacon.Application.Common.Interfaces;
 
 public interface IEmailSender
 {
-    Task SendAsync(string to, string subject, string htmlBody, CancellationToken cancellationToken = default);
+    Task SendAsync(Guid tenantId, string to, string subject, string htmlBody, CancellationToken cancellationToken = default);
 }

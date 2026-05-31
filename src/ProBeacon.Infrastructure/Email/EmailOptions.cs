@@ -9,5 +9,7 @@ public class EmailOptions
     public string FromAddress { get; set; } = string.Empty;
     public string FromName { get; set; } = "ProBeacon";
 
+    public bool EnableSsl { get; set; } = true;
+
     public bool IsConfigured => !string.IsNullOrWhiteSpace(Host) && !string.IsNullOrWhiteSpace(FromAddress);
 }

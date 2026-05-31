@@ -82,11 +82,18 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_HTTP_PORTS: "8080"
+      App__FrontendUrl: "http://localhost:5173"
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=probeacon;Username=probeacon;Password=probeacon_dev"
+      RabbitMq__Host: rabbitmq
+      RabbitMq__Username: probeacon
+      RabbitMq__Password: probeacon_dev
+      RabbitMq__VirtualHost: probeacon
     ports:
       - "8080:8080"
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       migrator:
         condition: service_completed_successfully

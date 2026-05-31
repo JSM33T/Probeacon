@@ -17,6 +17,9 @@ public class TenantSettingConfiguration : IEntityTypeConfiguration<TenantSetting
         builder.Property(s => s.Value)
             .IsRequired();
 
+        builder.Property(s => s.ValidationRegex)
+            .HasMaxLength(500);
+
         // one unique key per tenant
         builder.HasIndex(s => new { s.TenantId, s.Key })
             .IsUnique();
