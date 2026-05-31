@@ -8,5 +8,6 @@ export default [
     route("dashboard", "routes/dashboard.tsx"),
     route("settings", "routes/settings.tsx"),
     route("sessions", "routes/sessions.tsx"),
+    route("profile", "routes/profile.tsx"),
   ]),
 ] satisfies RouteConfig

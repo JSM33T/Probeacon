@@ -37,4 +37,10 @@ public class User
     public void SetRole(UserRole role) => Role = role;
 
     public void Deactivate() => IsActive = false;
+
+    public void UpdateDisplayName(string displayName) => DisplayName = displayName;
+
+    public void UpdateEmail(string email) => Email = email.ToLowerInvariant();
+
+    public void UpdatePasswordHash(string passwordHash) => PasswordHash = passwordHash;
 }
