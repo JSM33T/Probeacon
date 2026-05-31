@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ProBeacon.Api.Authorization;
 using ProBeacon.Api.Services;
 using ProBeacon.Application.Auth.Commands.TestSmtp;
 using ProBeacon.Application.Settings.Commands.DeleteSetting;
@@ -13,7 +14,7 @@ using ProBeacon.Application.Settings.Queries.GetSmtpSettings;
 
 namespace ProBeacon.Api.Controllers;
 
-[Authorize]
+[Authorize(Policy = AuthorizationPolicies.AdminOnly)]
 public class SettingsController : ApiControllerBase
 {
     [HttpGet]

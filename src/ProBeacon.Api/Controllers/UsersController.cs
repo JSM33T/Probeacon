@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using ProBeacon.Api.Authorization;
 using ProBeacon.Application.Users.Commands.PromoteToAdmin;
 using ProBeacon.Application.Users.Commands.UpdateProfile;
 using ProBeacon.Application.Users.Queries.GetProfile;
@@ -23,6 +24,7 @@ public class UsersController : ApiControllerBase
         return Ok(profile);
     }
 
+    [Authorize(Policy = AuthorizationPolicies.AdminOnly)]
     [HttpPost("{userId:guid}/promote")]
     public async Task<IActionResult> Promote(Guid userId, CancellationToken cancellationToken)
     {
