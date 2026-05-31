@@ -12,9 +12,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddMediator(options => options.ServiceLifetime = ServiceLifetime.Scoped);
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddSingleton<SetupState>();
 builder.Services.AddHttpContextAccessor();
 
@@ -53,6 +54,7 @@ if (Environment.GetEnvironmentVariable("MIGRATE_ONLY") == "true")
 if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 
+app.UseExceptionHandler();
 app.UseHttpsRedirection();
 app.UseMiddleware<SetupGuardMiddleware>();
 app.UseAuthentication();
