@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react"
 import { useLoaderData, useRevalidator } from "react-router"
+import { TriangleAlert } from "lucide-react"
 import { api } from "~/lib/api"
 import { getRefreshToken, getSessionId, setSession } from "~/lib/auth"
 import { Button } from "~/components/ui/button"
@@ -128,6 +129,18 @@ export default function ProfilePage() {
         </p>
       </div>
 
+      {!initial.email.includes("@") && (
+        <div className="flex items-start gap-3 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-800 dark:border-orange-900 dark:bg-orange-950/40 dark:text-orange-300">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+          <div>
+            <p className="font-medium">Set a real email address</p>
+            <p className="mt-0.5 text-orange-700 dark:text-orange-400">
+              You're using a temporary login identifier. Configure SMTP under Settings, then update your email here to enable notifications and account recovery.
+            </p>
+          </div>
+        </div>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Personal info</CardTitle>
@@ -150,13 +163,18 @@ export default function ProfilePage() {
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
-                type="email"
+                type="text"
                 value={info.email}
                 onChange={(e) =>
                   setInfo((f) => ({ ...f, email: e.target.value }))
                 }
                 required
               />
+              {info.email.includes("@") && !info.email.startsWith(initial.email) && (
+                <p className="text-xs text-muted-foreground">
+                  Changing your email will require re-verification.
+                </p>
+              )}
             </div>
             {infoError && (
               <p className="text-sm text-destructive">{infoError}</p>

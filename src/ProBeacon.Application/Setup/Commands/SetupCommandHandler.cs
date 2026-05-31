@@ -1,5 +1,6 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
+using ProBeacon.Application.Auth.Commands.SendVerificationEmail;
 using ProBeacon.Application.Common.Interfaces;
 using ProBeacon.Domain.Entities;
 
@@ -9,7 +10,8 @@ public class SetupCommandHandler(
     IApplicationDbContext db,
     IPasswordHasher passwordHasher,
     ITokenService tokenService,
-    IRequestContext requestContext)
+    IRequestContext requestContext,
+    ISender sender)
     : IRequestHandler<SetupCommand, SetupResult>
 {
     public async ValueTask<SetupResult> Handle(SetupCommand request, CancellationToken cancellationToken)
@@ -36,6 +38,8 @@ public class SetupCommandHandler(
         await db.SaveChangesAsync(cancellationToken);
 
         var token = tokenService.GenerateAccessToken(user, tenant.Name, session.Id);
+
+        await sender.Send(new SendVerificationEmailCommand(user.Id), cancellationToken);
 
         return new SetupResult(
             token.AccessToken,

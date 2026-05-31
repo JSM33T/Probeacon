@@ -13,6 +13,7 @@ import {
   FileText,
   FolderKanban,
   LogOut,
+  Mail,
   Menu,
   MonitorDot,
   Settings,
@@ -184,6 +185,44 @@ function SidebarGroup({
   )
 }
 
+function EmailVerificationBanner() {
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
+
+  const resend = async () => {
+    setSending(true)
+    try {
+      await api.post("/api/auth/send-verification", {})
+      setSent(true)
+    } catch {
+      // silently ignore
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <div className="mb-6 flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300">
+      <Mail className="size-4 shrink-0" />
+      <span className="flex-1">
+        {sent
+          ? "Verification email sent — check your inbox."
+          : "Please verify your email address to unlock all features."}
+      </span>
+      {!sent && (
+        <button
+          type="button"
+          className="shrink-0 font-medium underline underline-offset-2 hover:opacity-75 disabled:opacity-50"
+          disabled={sending}
+          onClick={resend}
+        >
+          {sending ? "Sending…" : "Resend email"}
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function AppLayout() {
   const { user } = useLoaderData<typeof clientLoader>()
   const location = useLocation()
@@ -339,6 +378,7 @@ export default function AppLayout() {
 
       <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-8">
         <div className="mx-auto w-full max-w-6xl">
+          {!user?.emailVerified && <EmailVerificationBanner />}
           <Outlet />
         </div>
       </main>

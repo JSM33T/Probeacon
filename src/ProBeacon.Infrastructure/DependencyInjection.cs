@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using ProBeacon.Application.Common.Interfaces;
 using ProBeacon.Infrastructure.Auth;
+using ProBeacon.Infrastructure.Email;
 using ProBeacon.Infrastructure.Persistence;
 
 namespace ProBeacon.Infrastructure;
@@ -19,6 +20,18 @@ public static class DependencyInjection
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<IRequestContext, RequestContext>();
+
+        services.Configure<EmailOptions>(opts =>
+        {
+            var section = configuration.GetSection("Email");
+            opts.Host = section["Host"] ?? string.Empty;
+            opts.Port = int.TryParse(section["Port"], out var port) ? port : 587;
+            opts.Username = section["Username"] ?? string.Empty;
+            opts.Password = section["Password"] ?? string.Empty;
+            opts.FromAddress = section["FromAddress"] ?? string.Empty;
+            opts.FromName = section["FromName"] ?? "ProBeacon";
+        });
+        services.AddScoped<IEmailSender, SmtpEmailSender>();
 
         return services;
     }

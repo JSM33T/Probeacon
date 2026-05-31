@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from "react"
 import { redirect, useNavigate } from "react-router"
 import { api } from "~/lib/api"
-import { getToken, setToken } from "~/lib/auth"
+import { getToken, setSession } from "~/lib/auth"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
@@ -34,8 +34,8 @@ export default function SetupPage() {
     setError(null)
     setLoading(true)
     try {
-      const res = await api.post<{ accessToken: string }>("/api/setup", form)
-      setToken(res.accessToken)
+      const res = await api.post<{ accessToken: string; refreshToken: string; sessionId: string }>("/api/setup", form)
+      setSession(res.accessToken, res.refreshToken, res.sessionId)
       navigate("/dashboard", { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : "Setup failed.")
@@ -60,7 +60,19 @@ export default function SetupPage() {
             <form onSubmit={submit} className="flex flex-col gap-4">
               <Field label="Organization name" value={form.orgName} onChange={set("orgName")} placeholder="Acme Inc." />
               <Field label="Your name" value={form.adminName} onChange={set("adminName")} placeholder="Jane Smith" />
-              <Field label="Email" type="email" value={form.email} onChange={set("email")} placeholder="jane@acme.com" />
+              <div className="flex flex-col gap-1.5">
+                <Label>Login identifier</Label>
+                <Input
+                  type="text"
+                  value={form.email}
+                  onChange={set("email")}
+                  placeholder="admin"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  No email needed yet — use any identifier. Set a real email in Profile once SMTP is configured.
+                </p>
+              </div>
               <Field label="Password" type="password" value={form.password} onChange={set("password")} placeholder="••••••••" />
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" disabled={loading} className="w-full mt-1">

@@ -29,7 +29,8 @@ public class TokenService(IConfiguration configuration) : ITokenService
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim("tenant_id", user.TenantId.ToString()),
             new Claim("role", user.Role.ToString()),
-            new Claim("session_id", sessionId.ToString())
+            new Claim("session_id", sessionId.ToString()),
+            new Claim("email_verified", user.IsEmailVerified ? "true" : "false")
         };
 
         var token = new JwtSecurityToken(

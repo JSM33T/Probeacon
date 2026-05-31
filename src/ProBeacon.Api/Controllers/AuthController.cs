@@ -4,11 +4,14 @@ using ProBeacon.Application.Auth.Commands.Login;
 using ProBeacon.Application.Auth.Commands.Logout;
 using ProBeacon.Application.Auth.Commands.RefreshToken;
 using ProBeacon.Application.Auth.Commands.RevokeSession;
+using ProBeacon.Application.Auth.Commands.SendVerificationEmail;
+using ProBeacon.Application.Auth.Commands.VerifyEmail;
 using ProBeacon.Application.Auth.Queries.GetSessions;
+using ProBeacon.Application.Common.Interfaces;
 
 namespace ProBeacon.Api.Controllers;
 
-public class AuthController : ApiControllerBase
+public class AuthController(ICurrentUser currentUser) : ApiControllerBase
 {
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginCommand command, CancellationToken cancellationToken)
@@ -36,6 +39,21 @@ public class AuthController : ApiControllerBase
     public async Task<IActionResult> RevokeSession(Guid sessionId, CancellationToken cancellationToken)
     {
         await Sender.Send(new RevokeSessionCommand(sessionId), cancellationToken);
+        return NoContent();
+    }
+
+    [Authorize]
+    [HttpPost("send-verification")]
+    public async Task<IActionResult> SendVerification(CancellationToken cancellationToken)
+    {
+        await Sender.Send(new SendVerificationEmailCommand(currentUser.UserId), cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPost("verify-email")]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailCommand command, CancellationToken cancellationToken)
+    {
+        await Sender.Send(command, cancellationToken);
         return NoContent();
     }
 }

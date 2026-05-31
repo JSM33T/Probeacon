@@ -4,6 +4,7 @@ export default [
   index("routes/home.tsx"),
   route("setup", "routes/setup.tsx"),
   route("login", "routes/login.tsx"),
+  route("verify-email", "routes/verify-email.tsx"),
   layout("layouts/app-layout.tsx", [
     route("dashboard", "routes/dashboard.tsx"),
     route("settings", "routes/settings.tsx"),

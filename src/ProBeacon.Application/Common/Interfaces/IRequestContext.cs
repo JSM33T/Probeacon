@@ -4,4 +4,5 @@ public interface IRequestContext
 {
     string UserAgent { get; }
     string IpAddress { get; }
+    string BaseUrl { get; }
 }
