@@ -1,4 +1,5 @@
 using FluentValidation;
+using System.Text.RegularExpressions;
 
 namespace ProBeacon.Application.Settings.Commands.ImportSettings;
 
@@ -16,8 +17,7 @@ public class ImportSettingsCommandValidator : AbstractValidator<ImportSettingsCo
         RuleForEach(command => command.Settings)
             .Must(entry => !string.IsNullOrWhiteSpace(entry.Key))
             .WithMessage("Setting key is required.")
-            .Must(entry => entry.Key.Trim().Contains('.') || entry.Key.Trim().Length > 0)
-            .Matches(entry => entry.Key, SettingKeyPattern)
+            .Must(entry => Regex.IsMatch(entry.Key.Trim(), SettingKeyPattern))
             .WithMessage("Setting key must use lowercase dotted format.");
     }
 }

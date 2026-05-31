@@ -9,8 +9,8 @@ public sealed class ValidationBehavior<TMessage, TResponse>(IEnumerable<IValidat
 {
     public async ValueTask<TResponse> Handle(
         TMessage message,
-        CancellationToken cancellationToken,
-        MessageHandlerDelegate<TMessage, TResponse> next)
+        MessageHandlerDelegate<TMessage, TResponse> next,
+        CancellationToken cancellationToken)
     {
         if (!validators.Any())
             return await next(message, cancellationToken);
