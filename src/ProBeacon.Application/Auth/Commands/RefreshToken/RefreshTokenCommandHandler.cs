@@ -1,4 +1,4 @@
-using MediatR;
+using Mediator;
 using Microsoft.EntityFrameworkCore;
 using ProBeacon.Application.Common.Interfaces;
 
@@ -9,7 +9,7 @@ public class RefreshTokenCommandHandler(
     ITokenService tokenService)
     : IRequestHandler<RefreshTokenCommand, RefreshResult>
 {
-    public async Task<RefreshResult> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
+    public async ValueTask<RefreshResult> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
     {
         var tokenHash = tokenService.HashRefreshToken(request.RefreshToken);
 

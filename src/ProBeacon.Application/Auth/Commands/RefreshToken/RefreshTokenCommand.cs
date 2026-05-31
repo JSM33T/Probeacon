@@ -1,4 +1,4 @@
-using MediatR;
+using Mediator;
 
 namespace ProBeacon.Application.Auth.Commands.RefreshToken;
 

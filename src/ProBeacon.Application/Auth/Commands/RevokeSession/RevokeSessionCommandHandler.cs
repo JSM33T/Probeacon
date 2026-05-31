@@ -1,13 +1,13 @@
-using MediatR;
+using Mediator;
 using Microsoft.EntityFrameworkCore;
 using ProBeacon.Application.Common.Interfaces;
 
 namespace ProBeacon.Application.Auth.Commands.RevokeSession;
 
 public class RevokeSessionCommandHandler(IApplicationDbContext db, ICurrentUser currentUser)
-    : IRequestHandler<RevokeSessionCommand>
+    : ICommandHandler<RevokeSessionCommand>
 {
-    public async Task Handle(RevokeSessionCommand request, CancellationToken cancellationToken)
+    public async ValueTask<Unit> Handle(RevokeSessionCommand request, CancellationToken cancellationToken)
     {
         var session = await db.UserSessions
             .FirstOrDefaultAsync(
@@ -17,10 +17,12 @@ public class RevokeSessionCommandHandler(IApplicationDbContext db, ICurrentUser 
         if (session is null)
             throw new KeyNotFoundException("Session not found.");
 
-        if (session.IsRevoked)
-            return;
+        if (!session.IsRevoked)
+        {
+            session.Revoke();
+            await db.SaveChangesAsync(cancellationToken);
+        }
 
-        session.Revoke();
-        await db.SaveChangesAsync(cancellationToken);
+        return default;
     }
 }

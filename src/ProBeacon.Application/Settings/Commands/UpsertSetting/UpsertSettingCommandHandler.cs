@@ -1,4 +1,4 @@
-using MediatR;
+using Mediator;
 using Microsoft.EntityFrameworkCore;
 using ProBeacon.Application.Common.Interfaces;
 using ProBeacon.Domain.Entities;
@@ -8,7 +8,7 @@ namespace ProBeacon.Application.Settings.Commands.UpsertSetting;
 public class UpsertSettingCommandHandler(IApplicationDbContext db, ICurrentUser currentUser)
     : IRequestHandler<UpsertSettingCommand, SettingDto>
 {
-    public async Task<SettingDto> Handle(UpsertSettingCommand request, CancellationToken cancellationToken)
+    public async ValueTask<SettingDto> Handle(UpsertSettingCommand request, CancellationToken cancellationToken)
     {
         var setting = await db.TenantSettings
             .FirstOrDefaultAsync(s => s.TenantId == currentUser.TenantId && s.Key == request.Key, cancellationToken);

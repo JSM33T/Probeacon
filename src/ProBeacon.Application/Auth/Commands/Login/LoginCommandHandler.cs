@@ -1,4 +1,4 @@
-using MediatR;
+using Mediator;
 using Microsoft.EntityFrameworkCore;
 using ProBeacon.Application.Common.Interfaces;
 using ProBeacon.Domain.Entities;
@@ -12,7 +12,7 @@ public class LoginCommandHandler(
     IRequestContext requestContext)
     : IRequestHandler<LoginCommand, LoginResult>
 {
-    public async Task<LoginResult> Handle(LoginCommand request, CancellationToken cancellationToken)
+    public async ValueTask<LoginResult> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
         var user = await db.Users
             .Include(u => u.Tenant)

@@ -1,4 +1,4 @@
-using MediatR;
+using Mediator;
 using Microsoft.EntityFrameworkCore;
 using ProBeacon.Application.Common.Interfaces;
 using ProBeacon.Domain.Entities;
@@ -12,7 +12,7 @@ public class SetupCommandHandler(
     IRequestContext requestContext)
     : IRequestHandler<SetupCommand, SetupResult>
 {
-    public async Task<SetupResult> Handle(SetupCommand request, CancellationToken cancellationToken)
+    public async ValueTask<SetupResult> Handle(SetupCommand request, CancellationToken cancellationToken)
     {
         if (await db.Tenants.AnyAsync(cancellationToken))
             throw new InvalidOperationException("ProBeacon is already configured.");

@@ -1,13 +1,13 @@
-using MediatR;
+using Mediator;
 using Microsoft.EntityFrameworkCore;
 using ProBeacon.Application.Common.Interfaces;
 
 namespace ProBeacon.Application.Auth.Commands.Logout;
 
 public class LogoutCommandHandler(IApplicationDbContext db, ICurrentUser currentUser)
-    : IRequestHandler<LogoutCommand>
+    : ICommandHandler<LogoutCommand>
 {
-    public async Task Handle(LogoutCommand request, CancellationToken cancellationToken)
+    public async ValueTask<Unit> Handle(LogoutCommand request, CancellationToken cancellationToken)
     {
         var session = await db.UserSessions
             .FirstOrDefaultAsync(
@@ -19,5 +19,7 @@ public class LogoutCommandHandler(IApplicationDbContext db, ICurrentUser current
             session.Revoke();
             await db.SaveChangesAsync(cancellationToken);
         }
+
+        return default;
     }
 }

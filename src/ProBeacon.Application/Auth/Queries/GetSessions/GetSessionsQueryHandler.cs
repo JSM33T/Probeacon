@@ -1,4 +1,4 @@
-using MediatR;
+using Mediator;
 using Microsoft.EntityFrameworkCore;
 using ProBeacon.Application.Common.Interfaces;
 
@@ -7,7 +7,7 @@ namespace ProBeacon.Application.Auth.Queries.GetSessions;
 public class GetSessionsQueryHandler(IApplicationDbContext db, ICurrentUser currentUser)
     : IRequestHandler<GetSessionsQuery, List<SessionDto>>
 {
-    public async Task<List<SessionDto>> Handle(GetSessionsQuery request, CancellationToken cancellationToken)
+    public async ValueTask<List<SessionDto>> Handle(GetSessionsQuery request, CancellationToken cancellationToken)
     {
         var sessions = await db.UserSessions
             .Where(s => s.UserId == currentUser.UserId && !s.IsRevoked && s.ExpiresAt > DateTime.UtcNow)

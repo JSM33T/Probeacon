@@ -1,5 +1,5 @@
-using MediatR;
+using Mediator;
 
 namespace ProBeacon.Application.Auth.Commands.Logout;
 
-public record LogoutCommand : IRequest;
+public record LogoutCommand : ICommand;
