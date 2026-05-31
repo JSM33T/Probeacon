@@ -1,0 +1,76 @@
+# ========================
+# .NET / C#
+# ========================
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+TestResults/
+publish/
+*.nupkg
+*.snupkg
+*.lock.json
+!packages.lock.json
+launchSettings.json
+
+# ========================
+# Node.js / Next.js
+# ========================
+node_modules/
+.next/
+out/
+build/
+.npm
+*.tsbuildinfo
+next-env.d.ts
+
+# ========================
+# Environment / Secrets
+# ========================
+.env
+.env.local
+.env.*.local
+*.env
+appsettings.Development.json
+appsettings.Local.json
+secrets.json
+
+# ========================
+# Docker
+# ========================
+.docker/
+
+# ========================
+# Logs & Data
+# ========================
+*.log
+logs/
+.logs/
+.data/
+data/
+
+# ========================
+# OS
+# ========================
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# ========================
+# IDE
+# ========================
+.idea/
+*.swp
+*.swo
+.vscode/settings.json
+.vscode/launch.json
+.vscode/*.code-workspace
+
+# ========================
+# Claude Code
+# ========================
+.claude/

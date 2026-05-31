@@ -1,0 +1,43 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# C#
+[*.cs]
+indent_style = space
+indent_size = 4
+dotnet_sort_system_directives_first = true
+csharp_new_line_before_open_brace = all
+csharp_prefer_braces = true:warning
+
+# JavaScript / TypeScript
+[*.{js,jsx,ts,tsx}]
+indent_style = space
+indent_size = 2
+
+# JSON
+[*.json]
+indent_style = space
+indent_size = 2
+
+# YAML
+[*.{yml,yaml}]
+indent_style = space
+indent_size = 2
+
+# XML / csproj
+[*.{xml,csproj,props,targets}]
+indent_style = space
+indent_size = 2
+
+# Markdown — preserve trailing spaces (intentional line breaks)
+[*.md]
+trim_trailing_whitespace = false
+
+# Shell
+[*.sh]
+end_of_line = lf
