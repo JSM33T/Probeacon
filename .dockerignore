@@ -1,0 +1,14 @@
+**/.git
+**/.vs
+**/.idea
+**/bin
+**/obj
+**/node_modules
+**/.next
+data/
+.logs/
+.data/
+.claude/
+*.md
+docker-compose*.yml
+Dockerfile

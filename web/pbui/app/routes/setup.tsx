@@ -1,0 +1,96 @@
+import { type FormEvent, useState } from "react"
+import { redirect, useNavigate } from "react-router"
+import { api } from "~/lib/api"
+import { getToken, setToken } from "~/lib/auth"
+import { Button } from "~/components/ui/button"
+import { Input } from "~/components/ui/input"
+import { Label } from "~/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+
+export async function clientLoader() {
+  if (getToken()) return redirect("/dashboard")
+  return null
+}
+
+export function HydrateFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <span className="text-sm text-muted-foreground">Loading…</span>
+    </div>
+  )
+}
+
+export default function SetupPage() {
+  const navigate = useNavigate()
+  const [form, setForm] = useState({ orgName: "", adminName: "", email: "", password: "" })
+  const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((f) => ({ ...f, [key]: e.target.value }))
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setLoading(true)
+    try {
+      const res = await api.post<{ accessToken: string }>("/api/setup", form)
+      setToken(res.accessToken)
+      navigate("/dashboard", { replace: true })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Setup failed.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-semibold">Welcome to ProBeacon</h1>
+          <p className="text-sm text-muted-foreground mt-1">Set up your organization to get started</p>
+        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Create organization</CardTitle>
+            <CardDescription>This only runs once on first launch</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={submit} className="flex flex-col gap-4">
+              <Field label="Organization name" value={form.orgName} onChange={set("orgName")} placeholder="Acme Inc." />
+              <Field label="Your name" value={form.adminName} onChange={set("adminName")} placeholder="Jane Smith" />
+              <Field label="Email" type="email" value={form.email} onChange={set("email")} placeholder="jane@acme.com" />
+              <Field label="Password" type="password" value={form.password} onChange={set("password")} placeholder="••••••••" />
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <Button type="submit" disabled={loading} className="w-full mt-1">
+                {loading ? "Setting up…" : "Create organization"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+function Field({
+  label,
+  type = "text",
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string
+  type?: string
+  value: string
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  placeholder?: string
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label>{label}</Label>
+      <Input type={type} value={value} onChange={onChange} placeholder={placeholder} required />
+    </div>
+  )
+}

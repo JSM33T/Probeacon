@@ -60,3 +60,34 @@ services:
       timeout: 5s
       retries: 5
 
+  migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: probeacon-migrator
+    environment:
+      MIGRATE_ONLY: "true"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=probeacon;Username=probeacon;Password=probeacon_dev"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: probeacon-api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=probeacon;Username=probeacon;Password=probeacon_dev"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+

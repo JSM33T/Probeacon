@@ -59,7 +59,6 @@ flowchart TD
 | Layer | Technology | Purpose |
 |---|---|---|
 | Dashboard (SPA) | **React + Vite** | Authenticated dashboard — projects, probes, RBAC management |
-| Marketing site | **Next.js** | Public-facing landing/promotional site |
 | API (write + read) | **.NET API** | CQRS commands/queries for projects, rules, tenants, auth |
 | Scheduler / Checker | **.NET Worker Service** | Repeatedly executes probe checks (HTTP, TCP, ping, etc.) |
 | Messaging | **RabbitMQ + MassTransit** | Decouples check execution from storage; absorbs spikes |
@@ -128,17 +127,24 @@ ClickHouse stores the **check results** (timestamp, probe_id, status, response_t
 
 ## 7. Suggested Repo / Service Layout
 
+Everything lives in **one repository** (monorepo). Frontend and backend are separated by directory, not by repo — a single `git clone` gets you the full runnable stack.
+
 ```
 probeacon/
-├── probeacon-web/            # React SPA (Vite) — authenticated dashboard
-├── probeacon-site/           # Next.js — public marketing/landing site
-├── ProBeacon.Api/            # .NET API (CQRS commands & queries)
-├── ProBeacon.Worker/         # .NET Worker Service (scheduler/checker)
-├── ProBeacon.Ingest/         # Consumer: queue → ClickHouse
-├── ProBeacon.Domain/         # Shared domain models / contracts
-├── ProBeacon.Infrastructure/ # EF Core, ClickHouse client, MassTransit config
-└── docker-compose.yml     # postgres, clickhouse, rabbitmq, services
+├── web/                      # React SPA (Vite) — authenticated dashboard
+├── src/                      # .NET solution
+│   ├── ProBeacon.Api/        # .NET API (CQRS commands & queries)
+│   ├── ProBeacon.Worker/     # .NET Worker Service (scheduler/checker)
+│   ├── ProBeacon.Ingest/     # Consumer: queue → ClickHouse
+│   ├── ProBeacon.Domain/     # Domain entities, enums, value objects
+│   ├── ProBeacon.Application/# CQRS commands, queries, interfaces
+│   └── ProBeacon.Infrastructure/ # EF Core, auth, token service
+├── docs/                     # Architecture docs, API test scripts
+├── docker-compose.yml        # postgres, clickhouse, rabbitmq, api, migrator
+└── global.json               # .NET SDK pin
 ```
+
+> Frontend (`web/`) and backend (`src/`) are completely independent codebases sharing only this repo. They communicate only over HTTP — the React SPA calls the .NET API, nothing more. Keeping them together means one PR covers a full feature (new endpoint + matching UI), one `docker compose up` runs everything locally, and self-hosters clone a single repo.
 
 ---
 

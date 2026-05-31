@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="ProBeacon.Api/ProBeacon.Api.csproj" />
+  <Project Path="ProBeacon.Application/ProBeacon.Application.csproj" />
+  <Project Path="ProBeacon.Domain/ProBeacon.Domain.csproj" />
+  <Project Path="ProBeacon.Infrastructure/ProBeacon.Infrastructure.csproj" />
+</Solution>
