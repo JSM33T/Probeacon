@@ -1,5 +1,16 @@
-import { type FormEvent, useMemo, useState } from "react"
-import { Eye, EyeOff, Pencil, Plus, Save, Trash2, X } from "lucide-react"
+import { type FormEvent, useMemo, useRef, useState } from "react"
+import {
+  Download,
+  Eye,
+  EyeOff,
+  Pencil,
+  Plus,
+  Save,
+  Trash2,
+  TriangleAlert,
+  Upload,
+  X,
+} from "lucide-react"
 import { useLoaderData } from "react-router"
 import { toast } from "sonner"
 
@@ -43,11 +54,22 @@ import {
   TableRow,
 } from "~/components/ui/table"
 import { api } from "~/lib/api"
+import { cn } from "~/lib/utils"
 
 interface Setting {
   key: string
   value: string
 }
+
+interface ImportReport {
+  created: number
+  updated: number
+  secretsPreserved: number
+  deleted: number
+  skipped: { key: string; reason: string }[]
+}
+
+type ImportMode = "merge" | "replace"
 
 type FormErrors = Partial<Record<keyof Setting, string>>
 
@@ -110,6 +132,16 @@ export default function SettingsPage() {
   const [pendingDelete, setPendingDelete] = useState<Setting | null>(null)
   const [errors, setErrors] = useState<FormErrors>({})
 
+  const [exportDialogOpen, setExportDialogOpen] = useState(false)
+  const [exportSecrets, setExportSecrets] = useState(false)
+  const [exporting, setExporting] = useState(false)
+
+  const [importDialogOpen, setImportDialogOpen] = useState(false)
+  const [importFile, setImportFile] = useState<File | null>(null)
+  const [importMode, setImportMode] = useState<ImportMode>("merge")
+  const [importing, setImporting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
   const sortedSettings = useMemo(
     () => [...settings].sort((a, b) => a.key.localeCompare(b.key)),
     [settings]
@@ -157,6 +189,64 @@ export default function SettingsPage() {
       toast.error("Failed to delete property")
     } finally {
       setDeletingKey(null)
+    }
+  }
+
+  const runExport = async () => {
+    setExporting(true)
+    try {
+      await api.download(
+        `/api/settings/export?includeSecrets=${exportSecrets}`,
+        "probeacon-settings.yaml"
+      )
+      setExportDialogOpen(false)
+      toast.success("Settings exported", {
+        description: exportSecrets
+          ? "Secret values were included — store the file securely."
+          : "Secret values were redacted.",
+      })
+      setExportSecrets(false)
+    } catch {
+      toast.error("Export failed")
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const runImport = async () => {
+    if (!importFile) return
+    setImporting(true)
+    try {
+      const content = await importFile.text()
+      const report = await api.post<ImportReport>("/api/settings/import", {
+        content,
+        replace: importMode === "replace",
+      })
+
+      const fresh = await api.get<Setting[]>("/api/settings")
+      setSettings(fresh)
+
+      const parts = [`${report.created} added`, `${report.updated} updated`]
+      if (report.secretsPreserved)
+        parts.push(`${report.secretsPreserved} secret${report.secretsPreserved === 1 ? "" : "s"} kept`)
+      if (report.deleted) parts.push(`${report.deleted} removed`)
+      if (report.skipped.length) parts.push(`${report.skipped.length} skipped`)
+
+      toast.success("Settings imported", { description: parts.join(" · ") })
+      report.skipped.forEach((s) =>
+        toast.warning(`Skipped ${s.key}`, { description: s.reason })
+      )
+
+      setImportDialogOpen(false)
+      setImportFile(null)
+      setImportMode("merge")
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    } catch (err: unknown) {
+      toast.error("Import failed", {
+        description: err instanceof Error ? err.message : undefined,
+      })
+    } finally {
+      setImporting(false)
     }
   }
 
@@ -227,8 +317,27 @@ export default function SettingsPage() {
                 are masked by default.
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline">{settings.length} total</Badge>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setImportDialogOpen(true)}
+              >
+                <Upload />
+                Import
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={settings.length === 0}
+                onClick={() => setExportDialogOpen(true)}
+              >
+                <Download />
+                Export
+              </Button>
               <Button type="button" size="sm" onClick={addProperty}>
                 <Plus />
                 Add property
@@ -449,6 +558,168 @@ export default function SettingsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={exportDialogOpen}
+        onOpenChange={(open) => {
+          setExportDialogOpen(open)
+          if (!open) setExportSecrets(false)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Export settings</DialogTitle>
+            <DialogDescription>
+              Downloads all properties as a flat-key YAML file you can version,
+              back up, or import into another workspace.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="flex items-start justify-between gap-4 rounded-lg border px-4 py-3">
+              <div>
+                <p className="text-sm font-medium">Include secret values</p>
+                <p className="text-xs text-muted-foreground">
+                  When off, secrets (passwords, tokens, keys) are redacted and
+                  re-importing keeps the existing stored values.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={exportSecrets}
+                onClick={() => setExportSecrets((v) => !v)}
+                className={cn(
+                  "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  exportSecrets ? "bg-destructive" : "bg-input"
+                )}
+              >
+                <span
+                  className={cn(
+                    "pointer-events-none inline-block size-5 rounded-full bg-background shadow-lg ring-0 transition-transform",
+                    exportSecrets ? "translate-x-5" : "translate-x-0"
+                  )}
+                />
+              </button>
+            </div>
+
+            {exportSecrets && (
+              <div className="flex items-start gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+                <span>
+                  The file will contain secrets in plaintext. Store and transfer
+                  it securely, and delete it when no longer needed.
+                </span>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              variant={exportSecrets ? "destructive" : "default"}
+              disabled={exporting}
+              onClick={runExport}
+            >
+              <Download />
+              {exporting ? "Exporting..." : "Download YAML"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={importDialogOpen}
+        onOpenChange={(open) => {
+          setImportDialogOpen(open)
+          if (!open) {
+            setImportFile(null)
+            setImportMode("merge")
+            if (fileInputRef.current) fileInputRef.current.value = ""
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Import settings</DialogTitle>
+            <DialogDescription>
+              Upload a YAML export. Each property is validated before it is
+              saved; invalid entries are skipped and reported.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="import-file">YAML file</Label>
+              <Input
+                id="import-file"
+                ref={fileInputRef}
+                type="file"
+                accept=".yaml,.yml,text/yaml,application/x-yaml"
+                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Mode</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {(["merge", "replace"] as ImportMode[]).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setImportMode(mode)}
+                    className={cn(
+                      "rounded-lg border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      importMode === mode
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:bg-muted/40"
+                    )}
+                  >
+                    <p className="text-sm font-medium capitalize">{mode}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {mode === "merge"
+                        ? "Add and update keys from the file."
+                        : "Also delete keys not in the file."}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {importMode === "replace" && (
+              <div className="flex items-start gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+                <span>
+                  Replace mode deletes any property not present in the file.
+                  Redacted secrets in the file are preserved.
+                </span>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              variant={importMode === "replace" ? "destructive" : "default"}
+              disabled={importing || !importFile}
+              onClick={runImport}
+            >
+              <Upload />
+              {importing ? "Importing..." : "Import"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

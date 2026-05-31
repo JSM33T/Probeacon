@@ -82,4 +82,28 @@ export const api = {
   patch: <T>(path: string, body: unknown) =>
     request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  download: async (path: string, fallbackFilename: string) => {
+    const token = getToken()
+    const res = await fetch(path, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!res.ok) {
+      const body = await res.text().catch(() => res.statusText)
+      throw new ApiError(res.status, body)
+    }
+
+    const disposition = res.headers.get("Content-Disposition")
+    const match = disposition?.match(/filename="?([^";]+)"?/i)
+    const filename = match?.[1] ?? fallbackFilename
+
+    const blob = await res.blob()
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = filename
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(url)
+  },
 }
