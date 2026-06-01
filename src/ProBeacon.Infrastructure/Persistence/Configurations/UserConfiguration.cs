@@ -24,7 +24,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Role)
             .HasConversion<string>();
 
-        builder.HasIndex(u => new { u.TenantId, u.Email })
+        builder.HasIndex(u => u.Email)
             .IsUnique();
 
         builder.HasOne(u => u.Tenant)

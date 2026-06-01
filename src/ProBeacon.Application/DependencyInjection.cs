@@ -2,6 +2,8 @@ using FluentValidation;
 using Mediator;
 using Microsoft.Extensions.DependencyInjection;
 using ProBeacon.Application.Common.Behaviors;
+using ProBeacon.Application.Common.Interfaces;
+using ProBeacon.Application.Common.Services;
 using System.Reflection;
 
 namespace ProBeacon.Application;
@@ -19,6 +21,7 @@ public static class DependencyInjection
         });
 
         services.AddValidatorsFromAssembly(assembly);
+        services.AddScoped<ITenantProvisioner, TenantProvisioner>();
 
         return services;
     }

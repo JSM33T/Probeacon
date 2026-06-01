@@ -14,6 +14,20 @@ public class TenantConfiguration : IEntityTypeConfiguration<Tenant>
             .HasMaxLength(100)
             .IsRequired();
 
+        builder.Property(t => t.Slug)
+            .HasMaxLength(120)
+            .IsRequired();
+
+        builder.Property(t => t.Kind)
+            .HasConversion<string>()
+            .HasMaxLength(32)
+            .IsRequired();
+
+        builder.HasIndex(t => t.Slug)
+            .IsUnique();
+
+        builder.HasIndex(t => new { t.Kind, t.ExpiresAt });
+
         builder.HasMany(t => t.Settings)
             .WithOne(s => s.Tenant)
             .HasForeignKey(s => s.TenantId)

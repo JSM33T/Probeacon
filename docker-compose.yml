@@ -83,6 +83,9 @@ services:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
       ASPNETCORE_HTTP_PORTS: ${ASPNETCORE_HTTP_PORTS}
       App__FrontendUrl: ${APP_FRONTEND_URL}
+      App__DeploymentMode: ${APP_DEPLOYMENT_MODE}
+      Demo__WorkspaceLifetimeHours: ${DEMO_WORKSPACE_LIFETIME_HOURS}
+      Demo__CleanupIntervalMinutes: ${DEMO_CLEANUP_INTERVAL_MINUTES}
       ConnectionStrings__DefaultConnection: ${API_DEFAULT_CONNECTION}
       Jwt__Secret: ${JWT_SECRET}
       Jwt__ExpiryMinutes: ${JWT_EXPIRY_MINUTES}

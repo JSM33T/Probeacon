@@ -11,7 +11,7 @@ namespace ProBeacon.Infrastructure.Auth;
 
 public class TokenService(IConfiguration configuration) : ITokenService
 {
-    public TokenResult GenerateAccessToken(User user, string tenantName, Guid sessionId)
+    public TokenResult GenerateAccessToken(User user, Tenant tenant, Guid sessionId)
     {
         var secret = configuration["Jwt:Secret"]
             ?? throw new InvalidOperationException("Jwt:Secret is not configured.");
@@ -28,10 +28,15 @@ public class TokenService(IConfiguration configuration) : ITokenService
             new Claim(JwtRegisteredClaimNames.Name, user.DisplayName),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             new Claim("tenant_id", user.TenantId.ToString()),
+            new Claim("tenant_slug", tenant.Slug),
+            new Claim("tenant_kind", tenant.Kind.ToString()),
             new Claim("role", user.Role.ToString()),
             new Claim("session_id", sessionId.ToString()),
             new Claim("email_verified", user.IsEmailVerified ? "true" : "false")
         };
+
+        if (tenant.ExpiresAt.HasValue)
+            claims = [.. claims, new Claim("tenant_expires_at", tenant.ExpiresAt.Value.ToString("O"))];
 
         var token = new JwtSecurityToken(
             issuer: configuration["Jwt:Issuer"],

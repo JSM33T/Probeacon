@@ -1,5 +1,6 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
+using ProBeacon.Application.Common.Exceptions;
 using ProBeacon.Application.Common.Interfaces;
 
 namespace ProBeacon.Application.Auth.Commands.RefreshToken;
@@ -26,11 +27,14 @@ public class RefreshTokenCommandHandler(
         if (!session.User.IsActive)
             throw new UnauthorizedAccessException("Account is disabled.");
 
+        if (session.User.Tenant.IsExpired(DateTime.UtcNow))
+            throw new WorkspaceExpiredException();
+
         var newRawToken = tokenService.GenerateRefreshToken();
         var newHash = tokenService.HashRefreshToken(newRawToken);
         session.RotateRefreshToken(newHash);
 
-        var accessToken = tokenService.GenerateAccessToken(session.User, session.User.Tenant.Name, session.Id);
+        var accessToken = tokenService.GenerateAccessToken(session.User, session.User.Tenant, session.Id);
         await db.SaveChangesAsync(cancellationToken);
 
         return new RefreshResult(accessToken.AccessToken, accessToken.ExpiresAt, newRawToken);

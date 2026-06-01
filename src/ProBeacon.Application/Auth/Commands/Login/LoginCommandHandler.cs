@@ -1,5 +1,6 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
+using ProBeacon.Application.Common.Exceptions;
 using ProBeacon.Application.Common.Interfaces;
 using ProBeacon.Domain.Entities;
 
@@ -21,6 +22,9 @@ public class LoginCommandHandler(
         if (user is null || !user.IsActive || !passwordHasher.Verify(request.Password, user.PasswordHash))
             throw new UnauthorizedAccessException("Invalid email or password.");
 
+        if (user.Tenant.IsExpired(DateTime.UtcNow))
+            throw new WorkspaceExpiredException();
+
         var rawRefreshToken = tokenService.GenerateRefreshToken();
         var refreshTokenHash = tokenService.HashRefreshToken(rawRefreshToken);
 
@@ -33,7 +37,7 @@ public class LoginCommandHandler(
 
         db.UserSessions.Add(session);
 
-        var token = tokenService.GenerateAccessToken(user, user.Tenant.Name, session.Id);
+        var token = tokenService.GenerateAccessToken(user, user.Tenant, session.Id);
         await db.SaveChangesAsync(cancellationToken);
 
         return new LoginResult(
@@ -41,6 +45,10 @@ public class LoginCommandHandler(
             token.ExpiresAt,
             rawRefreshToken,
             session.Id,
+            user.TenantId,
+            user.Tenant.Slug,
+            user.Tenant.Kind.ToString(),
+            user.Tenant.ExpiresAt,
             user.Id,
             user.Email,
             user.DisplayName,

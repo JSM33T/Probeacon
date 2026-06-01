@@ -1,6 +1,7 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using ProBeacon.Application.Common.Exceptions;
 
 namespace ProBeacon.Api.Middleware;
 
@@ -29,7 +30,10 @@ public sealed class GlobalExceptionHandler(
         var statusCode = exception switch
         {
             UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
+            ForbiddenException => StatusCodes.Status403Forbidden,
             KeyNotFoundException => StatusCodes.Status404NotFound,
+            ConflictException => StatusCodes.Status409Conflict,
+            WorkspaceExpiredException => StatusCodes.Status410Gone,
             InvalidOperationException => StatusCodes.Status400BadRequest,
             ArgumentException => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status500InternalServerError
@@ -53,6 +57,8 @@ public sealed class GlobalExceptionHandler(
         };
 
         problemDetails.Extensions["traceId"] = httpContext.TraceIdentifier;
+        if (exception is WorkspaceExpiredException)
+            problemDetails.Extensions["code"] = "workspace_expired";
 
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {
@@ -88,7 +94,10 @@ public sealed class GlobalExceptionHandler(
     {
         StatusCodes.Status400BadRequest => "Bad Request",
         StatusCodes.Status401Unauthorized => "Unauthorized",
+        StatusCodes.Status403Forbidden => "Forbidden",
         StatusCodes.Status404NotFound => "Not Found",
+        StatusCodes.Status409Conflict => "Conflict",
+        StatusCodes.Status410Gone => "Workspace Expired",
         _ => "Internal Server Error"
     };
 }

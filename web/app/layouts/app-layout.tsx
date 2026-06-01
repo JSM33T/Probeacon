@@ -9,6 +9,7 @@ import {
 import { toast } from "sonner"
 import {
   ChevronDown,
+  Clock3,
   CircleGauge,
   Database,
   FileText,
@@ -68,6 +69,14 @@ import { clearSession, getToken, getUser, type AuthUser } from "~/lib/auth"
 import { cn } from "~/lib/utils"
 
 export async function clientLoader() {
+  const status = await api.get<{ configured: boolean; deploymentMode: string }>(
+    "/api/setup/status"
+  )
+  if (status.deploymentMode === "SelfHosted" && !status.configured) {
+    clearSession()
+    return redirect("/setup")
+  }
+
   if (!getToken()) return redirect("/login")
   return { user: getUser() }
 }
@@ -284,6 +293,43 @@ function EmailVerificationBanner() {
   )
 }
 
+function DemoExpiryBanner({ expiresAt }: { expiresAt: string }) {
+  const [now, setNow] = useState(() => Date.now())
+  const expiry = new Date(expiresAt).getTime()
+  const remainingMs = Math.max(0, expiry - now)
+  const hours = Math.floor(remainingMs / 3_600_000)
+  const minutes = Math.floor((remainingMs % 3_600_000) / 60_000)
+  const urgent = remainingMs <= 3_600_000
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 60_000)
+    return () => window.clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    if (remainingMs === 0) {
+      clearSession()
+      window.location.href = "/expired"
+    }
+  }, [remainingMs])
+
+  return (
+    <div
+      className={cn(
+        "mb-6 flex items-center gap-3 rounded-lg border px-4 py-3 text-sm",
+        urgent
+          ? "border-red-200 bg-red-50 text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300"
+          : "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+      )}
+    >
+      <Clock3 className="size-4 shrink-0" />
+      <span className="flex-1">
+        Demo workspace expires in {hours}h {minutes}m.
+      </span>
+    </div>
+  )
+}
+
 function AppSidebar({
   user,
   initials,
@@ -493,6 +539,9 @@ export default function AppLayout() {
 
         <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-8">
           <div className="mx-auto w-full max-w-6xl">
+            {user?.tenantKind === "OnlineDemo" && user.tenantExpiresAt && (
+              <DemoExpiryBanner expiresAt={user.tenantExpiresAt} />
+            )}
             {!user?.emailVerified && <EmailVerificationBanner />}
             <Outlet />
           </div>

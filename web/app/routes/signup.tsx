@@ -1,5 +1,5 @@
 import { type FormEvent, useState } from "react"
-import { redirect, useNavigate } from "react-router"
+import { Link, redirect, useLoaderData, useNavigate } from "react-router"
 import { api } from "~/lib/api"
 import { getToken, setSession } from "~/lib/auth"
 import { Button } from "~/components/ui/button"
@@ -13,14 +13,19 @@ import {
   CardTitle,
 } from "~/components/ui/card"
 
+interface SetupStatus {
+  configured: boolean
+  deploymentMode: "SelfHosted" | "OnlineDemo"
+  demoWorkspaceLifetimeHours: number
+}
+
 export async function clientLoader() {
   if (getToken()) return redirect("/dashboard")
-  const status = await api.get<{ configured: boolean; deploymentMode: string }>(
-    "/api/setup/status"
-  )
-  if (status.deploymentMode === "OnlineDemo") return redirect("/signup")
-  if (status.configured) return redirect("/login")
-  return null
+  const status = await api.get<SetupStatus>("/api/setup/status")
+  if (status.deploymentMode !== "OnlineDemo") {
+    return redirect(status.configured ? "/login" : "/setup")
+  }
+  return { lifetimeHours: status.demoWorkspaceLifetimeHours }
 }
 
 export function HydrateFallback() {
@@ -31,7 +36,8 @@ export function HydrateFallback() {
   )
 }
 
-export default function SetupPage() {
+export default function SignupPage() {
+  const { lifetimeHours } = useLoaderData<typeof clientLoader>()
   const navigate = useNavigate()
   const [form, setForm] = useState({
     orgName: "",
@@ -55,11 +61,11 @@ export default function SetupPage() {
         accessToken: string
         refreshToken: string
         sessionId: string
-      }>("/api/setup", form)
+      }>("/api/auth/signup", form)
       setSession(res.accessToken, res.refreshToken, res.sessionId)
       navigate("/dashboard", { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Setup failed.")
+      setError(err instanceof Error ? err.message : "Signup failed.")
     } finally {
       setLoading(false)
     }
@@ -69,23 +75,25 @@ export default function SetupPage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold">Welcome to ProBeacon</h1>
+          <h1 className="text-2xl font-semibold">Try ProBeacon</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Set up your organization to get started
+            Create a temporary workspace that expires in {lifetimeHours} hours.
           </p>
         </div>
         <Card>
           <CardHeader>
-            <CardTitle>Create organization</CardTitle>
-            <CardDescription>This only runs once on first launch</CardDescription>
+            <CardTitle>Create demo workspace</CardTitle>
+            <CardDescription>
+              Use a real email so you can sign back in before it expires.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={submit} className="flex flex-col gap-4">
               <Field
-                label="Organization name"
+                label="Workspace name"
                 value={form.orgName}
                 onChange={set("orgName")}
-                placeholder="Acme Inc."
+                placeholder="Acme Observability"
               />
               <Field
                 label="Your name"
@@ -98,7 +106,7 @@ export default function SetupPage() {
                 type="email"
                 value={form.email}
                 onChange={set("email")}
-                placeholder="admin@company.com"
+                placeholder="jane@company.com"
               />
               <Field
                 label="Password"
@@ -109,9 +117,15 @@ export default function SetupPage() {
               />
               {error && <p className="text-sm text-destructive">{error}</p>}
               <Button type="submit" disabled={loading} className="mt-1 w-full">
-                {loading ? "Setting up..." : "Create organization"}
+                {loading ? "Creating..." : "Create workspace"}
               </Button>
             </form>
+            <p className="mt-4 text-center text-sm text-muted-foreground">
+              Already created one?{" "}
+              <Link to="/login" className="font-medium text-foreground underline">
+                Sign in
+              </Link>
+            </p>
           </CardContent>
         </Card>
       </div>

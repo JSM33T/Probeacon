@@ -10,8 +10,8 @@ public class SetupController(SetupState setupState) : ApiControllerBase
     [HttpGet("status")]
     public async Task<IActionResult> Status(CancellationToken cancellationToken)
     {
-        var configured = await Sender.Send(new GetSetupStatusQuery(), cancellationToken);
-        return Ok(new { configured });
+        var status = await Sender.Send(new GetSetupStatusQuery(), cancellationToken);
+        return Ok(status);
     }
 
     [HttpPost]

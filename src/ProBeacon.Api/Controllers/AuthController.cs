@@ -5,6 +5,7 @@ using ProBeacon.Application.Auth.Commands.Logout;
 using ProBeacon.Application.Auth.Commands.RefreshToken;
 using ProBeacon.Application.Auth.Commands.RevokeSession;
 using ProBeacon.Application.Auth.Commands.SendVerificationEmail;
+using ProBeacon.Application.Auth.Commands.Signup;
 using ProBeacon.Application.Auth.Commands.VerifyEmail;
 using ProBeacon.Application.Auth.Queries.GetSessions;
 using ProBeacon.Application.Common.Interfaces;
@@ -15,6 +16,10 @@ public class AuthController(ICurrentUser currentUser) : ApiControllerBase
 {
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginCommand command, CancellationToken cancellationToken)
+        => Ok(await Sender.Send(command, cancellationToken));
+
+    [HttpPost("signup")]
+    public async Task<IActionResult> Signup(SignupCommand command, CancellationToken cancellationToken)
         => Ok(await Sender.Send(command, cancellationToken));
 
     [HttpPost("refresh")]

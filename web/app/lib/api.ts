@@ -1,7 +1,11 @@
 import { clearSession, getRefreshToken, getSessionId, getToken, setSession, setToken } from "./auth"
 
 export class ApiError extends Error {
-  constructor(public status: number, message: string) {
+  constructor(
+    public status: number,
+    message: string,
+    public code?: string
+  ) {
     super(message)
   }
 }
@@ -22,6 +26,12 @@ async function tryRefresh(): Promise<boolean> {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId, refreshToken }),
       })
+
+      if (res.status === 410) {
+        clearSession()
+        window.location.href = "/expired"
+        return false
+      }
 
       if (!res.ok) return false
 
@@ -57,6 +67,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
         if (retry.status === 204) return undefined as T
         return retry.json()
       }
+
+      if (retry.status === 410) {
+        const body = await readError(retry)
+        clearSession()
+        window.location.href = "/expired"
+        throw new ApiError(410, body.message, body.code)
+      }
     }
 
     clearSession()
@@ -65,12 +82,40 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
 
   if (!res.ok) {
-    const body = await res.text().catch(() => res.statusText)
-    throw new ApiError(res.status, body)
+    const body = await readError(res)
+    if (res.status === 503 && body.configured === false) {
+      clearSession()
+      window.location.href = "/setup"
+    }
+    if (res.status === 410 && body.code === "workspace_expired") {
+      clearSession()
+      window.location.href = "/expired"
+    }
+    throw new ApiError(res.status, body.message, body.code)
   }
 
   if (res.status === 204) return undefined as T
   return res.json()
+}
+
+async function readError(res: Response): Promise<{
+  message: string
+  code?: string
+  configured?: boolean
+}> {
+  const text = await res.text().catch(() => "")
+  if (!text) return { message: res.statusText }
+
+  try {
+    const parsed = JSON.parse(text)
+    return {
+      message: parsed.detail ?? parsed.title ?? text,
+      code: parsed.code,
+      configured: parsed.configured,
+    }
+  } catch {
+    return { message: text }
+  }
 }
 
 export const api = {

@@ -8,4 +8,10 @@ public class AppOptions
     /// request base URL when not configured.
     /// </summary>
     public string FrontendUrl { get; set; } = string.Empty;
+
+    public DeploymentMode DeploymentMode { get; set; } = DeploymentMode.SelfHosted;
+
+    public bool IsSelfHosted => DeploymentMode == DeploymentMode.SelfHosted;
+
+    public bool IsOnlineDemo => DeploymentMode == DeploymentMode.OnlineDemo;
 }

@@ -1,13 +1,15 @@
-namespace ProBeacon.Application.Auth;
+using ProBeacon.Domain.Enums;
 
-public record LoginResult(
+namespace ProBeacon.Application.Common.Models;
+
+public record TenantProvisioningResult(
     string AccessToken,
-    DateTime ExpiresAt,
+    DateTime AccessTokenExpiresAt,
     string RefreshToken,
     Guid SessionId,
     Guid TenantId,
     string TenantSlug,
-    string TenantKind,
+    TenantKind TenantKind,
     DateTime? TenantExpiresAt,
     Guid UserId,
     string Email,

@@ -1,14 +1,24 @@
 import { redirect, useLoaderData } from "react-router"
 import { api } from "~/lib/api"
-import { getToken } from "~/lib/auth"
+import { clearSession, getToken } from "~/lib/auth"
 import { Button } from "~/components/ui/button"
 
-export async function clientLoader() {
-  if (getToken()) return redirect("/dashboard")
+interface SetupStatus {
+  configured: boolean
+  deploymentMode: "SelfHosted" | "OnlineDemo"
+  demoWorkspaceLifetimeHours: number
+}
 
+export async function clientLoader() {
   try {
-    const { configured } = await api.get<{ configured: boolean }>("/api/setup/status")
-    return redirect(configured ? "/login" : "/setup")
+    const status = await api.get<SetupStatus>("/api/setup/status")
+    if (status.deploymentMode === "OnlineDemo") return redirect("/signup")
+    if (!status.configured) {
+      clearSession()
+      return redirect("/setup")
+    }
+    if (getToken()) return redirect("/dashboard")
+    return redirect(status.configured ? "/login" : "/setup")
   } catch {
     return { error: true }
   }

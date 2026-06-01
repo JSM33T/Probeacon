@@ -11,6 +11,10 @@ export interface AuthUser {
   role: string
   sessionId: string
   emailVerified: boolean
+  tenantId: string
+  tenantSlug: string
+  tenantKind: string
+  tenantExpiresAt: string | null
 }
 
 function parseJwt(token: string): AuthUser | null {
@@ -23,6 +27,10 @@ function parseJwt(token: string): AuthUser | null {
       role: payload.role,
       sessionId: payload.session_id,
       emailVerified: payload.email_verified === "true",
+      tenantId: payload.tenant_id,
+      tenantSlug: payload.tenant_slug,
+      tenantKind: payload.tenant_kind,
+      tenantExpiresAt: payload.tenant_expires_at ?? null,
     }
   } catch {
     return null

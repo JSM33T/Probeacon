@@ -4,7 +4,7 @@ namespace ProBeacon.Application.Common.Interfaces;
 
 public interface ITokenService
 {
-    TokenResult GenerateAccessToken(User user, string tenantName, Guid sessionId);
+    TokenResult GenerateAccessToken(User user, Tenant tenant, Guid sessionId);
     string GenerateRefreshToken();
     string HashRefreshToken(string rawToken);
 }

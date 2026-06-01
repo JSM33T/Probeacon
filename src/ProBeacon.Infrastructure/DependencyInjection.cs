@@ -7,6 +7,7 @@ using ProBeacon.Infrastructure.Auth;
 using ProBeacon.Infrastructure.Email;
 using ProBeacon.Infrastructure.Messaging;
 using ProBeacon.Infrastructure.Persistence;
+using ProBeacon.Infrastructure.Tenants;
 
 namespace ProBeacon.Infrastructure;
 
@@ -27,6 +28,20 @@ public static class DependencyInjection
         {
             var section = configuration.GetSection("App");
             opts.FrontendUrl = section["FrontendUrl"] ?? string.Empty;
+            opts.DeploymentMode = Enum.TryParse<DeploymentMode>(section["DeploymentMode"], true, out var deploymentMode)
+                ? deploymentMode
+                : DeploymentMode.SelfHosted;
+        });
+
+        services.Configure<DemoOptions>(opts =>
+        {
+            var section = configuration.GetSection("Demo");
+            opts.WorkspaceLifetimeHours = int.TryParse(section["WorkspaceLifetimeHours"], out var lifetimeHours)
+                ? lifetimeHours
+                : 48;
+            opts.CleanupIntervalMinutes = int.TryParse(section["CleanupIntervalMinutes"], out var cleanupIntervalMinutes)
+                ? cleanupIntervalMinutes
+                : 60;
         });
 
         services.Configure<RabbitMqOptions>(opts =>
@@ -53,6 +68,7 @@ public static class DependencyInjection
             opts.FromName = section["FromName"] ?? "ProBeacon";
         });
         services.AddScoped<IEmailSender, SmtpEmailSender>();
+        services.AddHostedService<OnlineDemoCleanupService>();
 
         return services;
     }

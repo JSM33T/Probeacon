@@ -1,54 +1,51 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
-using ProBeacon.Application.Auth.Commands.SendVerificationEmail;
+using Microsoft.Extensions.Options;
+using ProBeacon.Application.Common.Exceptions;
 using ProBeacon.Application.Common.Interfaces;
-using ProBeacon.Domain.Entities;
+using ProBeacon.Application.Common.Models;
+using ProBeacon.Application.Common.Options;
+using ProBeacon.Domain.Enums;
 
 namespace ProBeacon.Application.Setup.Commands;
 
 public class SetupCommandHandler(
     IApplicationDbContext db,
-    IPasswordHasher passwordHasher,
-    ITokenService tokenService,
-    IRequestContext requestContext,
-    ISender sender)
+    ITenantProvisioner tenantProvisioner,
+    IOptions<AppOptions> appOptions)
     : IRequestHandler<SetupCommand, SetupResult>
 {
     public async ValueTask<SetupResult> Handle(SetupCommand request, CancellationToken cancellationToken)
     {
+        if (!appOptions.Value.IsSelfHosted)
+            throw new ForbiddenException("Self-hosted setup is disabled in online demo mode.");
+
         if (await db.Tenants.AnyAsync(cancellationToken))
-            throw new InvalidOperationException("ProBeacon is already configured.");
+            throw new ConflictException("ProBeacon is already configured.");
 
-        var tenant = Tenant.Create(request.OrgName);
-        db.Tenants.Add(tenant);
-
-        var passwordHash = passwordHasher.Hash(request.Password);
-        var user = User.Create(tenant.Id, request.Email, request.AdminName, passwordHash);
-        db.Users.Add(user);
-
-        var rawRefreshToken = tokenService.GenerateRefreshToken();
-        var session = UserSession.Create(
-            user.Id,
-            tenant.Id,
-            tokenService.HashRefreshToken(rawRefreshToken),
-            requestContext.UserAgent,
-            requestContext.IpAddress);
-        db.UserSessions.Add(session);
-
-        await db.SaveChangesAsync(cancellationToken);
-
-        var token = tokenService.GenerateAccessToken(user, tenant.Name, session.Id);
-
-        await sender.Send(new SendVerificationEmailCommand(user.Id), cancellationToken);
+        var result = await tenantProvisioner.ProvisionAsync(
+            new TenantProvisioningRequest(
+                request.OrgName,
+                request.AdminName,
+                request.Email,
+                request.Password,
+                TenantKind.SelfHosted,
+                null),
+            cancellationToken);
 
         return new SetupResult(
-            token.AccessToken,
-            token.ExpiresAt,
-            rawRefreshToken,
-            session.Id,
-            user.Id,
-            user.Email,
-            user.DisplayName
+            result.AccessToken,
+            result.AccessTokenExpiresAt,
+            result.RefreshToken,
+            result.SessionId,
+            result.TenantId,
+            result.TenantSlug,
+            result.TenantKind.ToString(),
+            result.TenantExpiresAt,
+            result.UserId,
+            result.Email,
+            result.DisplayName,
+            result.Role
         );
     }
 }

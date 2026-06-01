@@ -1,6 +1,6 @@
-namespace ProBeacon.Application.Auth;
+namespace ProBeacon.Application.Auth.Commands.Signup;
 
-public record LoginResult(
+public record SignupResult(
     string AccessToken,
     DateTime ExpiresAt,
     string RefreshToken,
