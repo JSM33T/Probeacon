@@ -5,9 +5,9 @@ services:
     container_name: probeacon-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: probeacon
-      POSTGRES_USER: probeacon
-      POSTGRES_PASSWORD: probeacon_dev
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -23,9 +23,9 @@ services:
     container_name: probeacon-clickhouse
     restart: unless-stopped
     environment:
-      CLICKHOUSE_DB: probeacon
-      CLICKHOUSE_USER: probeacon
-      CLICKHOUSE_PASSWORD: probeacon_dev
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
     ports:
       - "8123:8123"   # HTTP interface
       - "9000:9000"   # Native protocol
@@ -46,9 +46,9 @@ services:
     container_name: probeacon-rabbitmq
     restart: unless-stopped
     environment:
-      RABBITMQ_DEFAULT_USER: probeacon
-      RABBITMQ_DEFAULT_PASS: probeacon_dev
-      RABBITMQ_DEFAULT_VHOST: probeacon
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_DEFAULT_VHOST}
     ports:
       - "5672:5672"   # AMQP
       - "15672:15672" # Management UI → http://localhost:15672
@@ -67,7 +67,7 @@ services:
     container_name: probeacon-migrator
     environment:
       MIGRATE_ONLY: "true"
-      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=probeacon;Username=probeacon;Password=probeacon_dev"
+      ConnectionStrings__DefaultConnection: ${API_DEFAULT_CONNECTION}
     depends_on:
       postgres:
         condition: service_healthy
@@ -80,14 +80,27 @@ services:
     container_name: probeacon-api
     restart: unless-stopped
     environment:
-      ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_HTTP_PORTS: "8080"
-      App__FrontendUrl: "http://localhost:5173"
-      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=probeacon;Username=probeacon;Password=probeacon_dev"
-      RabbitMq__Host: rabbitmq
-      RabbitMq__Username: probeacon
-      RabbitMq__Password: probeacon_dev
-      RabbitMq__VirtualHost: probeacon
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+      ASPNETCORE_HTTP_PORTS: ${ASPNETCORE_HTTP_PORTS}
+      App__FrontendUrl: ${APP_FRONTEND_URL}
+      ConnectionStrings__DefaultConnection: ${API_DEFAULT_CONNECTION}
+      Jwt__Secret: ${JWT_SECRET}
+      Jwt__ExpiryMinutes: ${JWT_EXPIRY_MINUTES}
+      Jwt__Issuer: ${JWT_ISSUER}
+      Jwt__Audience: ${JWT_AUDIENCE}
+      RabbitMq__Host: ${RABBITMQ_HOST}
+      RabbitMq__Port: ${RABBITMQ_PORT}
+      RabbitMq__Username: ${RABBITMQ_DEFAULT_USER}
+      RabbitMq__Password: ${RABBITMQ_DEFAULT_PASS}
+      RabbitMq__VirtualHost: ${RABBITMQ_DEFAULT_VHOST}
+      RabbitMq__EmailQueue: ${RABBITMQ_EMAIL_QUEUE}
+      Email__Host: ${EMAIL_HOST}
+      Email__Port: ${EMAIL_PORT}
+      Email__Username: ${EMAIL_USERNAME}
+      Email__Password: ${EMAIL_PASSWORD}
+      Email__FromAddress: ${EMAIL_FROM_ADDRESS}
+      Email__FromName: ${EMAIL_FROM_NAME}
+      Email__EnableSsl: ${EMAIL_ENABLE_SSL}
     ports:
       - "8080:8080"
     depends_on:

@@ -30,6 +30,7 @@ A self-hosted-style uptime and service monitoring platform with multi-tenancy, p
 Start the infrastructure:
 
 ```bash
+cp env.example .env
 docker compose up -d
 ```
 
