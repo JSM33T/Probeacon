@@ -39,7 +39,7 @@ This starts:
 - ClickHouse on `localhost:8123` (HTTP) / `9000` (native)
 - RabbitMQ on `localhost:5672` — management UI at `http://localhost:15672`
 
-Default credentials for all services: `probeacon / probeacon_dev`
+Before starting services, replace the `change-me` values in `.env`.
 
 ## Project Structure
 

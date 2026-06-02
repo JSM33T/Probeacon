@@ -106,6 +106,8 @@ type NavGroup = {
 
 const primaryNav: NavItem[] = [
   { title: "Dashboard", href: "/dashboard", icon: CircleGauge },
+  { title: "Projects", href: "/projects", icon: FolderKanban },
+  { title: "Users", href: "/users", icon: Users, adminOnly: true },
 ]
 
 const navGroups: NavGroup[] = [
@@ -119,26 +121,20 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    title: "Projects",
-    icon: FolderKanban,
+    title: "Reports",
+    icon: FileText,
     items: [
-      {
-        title: "All Projects",
-        icon: FolderKanban,
-        href: "/projects",
-      },
-      { title: "Reports", icon: FileText, badge: "Soon", disabled: true },
+      { title: "Project Reports", icon: FileText, badge: "Soon", disabled: true },
     ],
   },
   {
-    title: "Configuration",
+    title: "Admin",
     icon: Settings,
     items: [
       { title: "Settings", href: "/settings", icon: Settings },
-      { title: "Users", href: "/team", icon: Users, adminOnly: true },
       { title: "Authentication", href: "/auth-config", icon: KeyRound },
-      { title: "Data Sources", icon: Database, badge: "Soon", disabled: true },
       { title: "Sessions", href: "/sessions", icon: ShieldCheck },
+      { title: "Data Sources", icon: Database, badge: "Soon", disabled: true },
     ],
   },
 ]
@@ -152,13 +148,16 @@ function isActivePath(currentPath: string, href?: string) {
 function AppSidebarLink({
   item,
   currentPath,
+  user,
 }: {
   item: NavItem
   currentPath: string
+  user: AuthUser | null
 }) {
   const { isMobile, setOpenMobile } = useSidebar()
   const Icon = item.icon
   const active = isActivePath(currentPath, item.href)
+  if (item.adminOnly && user?.role !== "Admin") return null
   const closeMobile = () => {
     if (isMobile) setOpenMobile(false)
   }
@@ -390,6 +389,7 @@ function AppSidebar({
                   key={item.title}
                   item={item}
                   currentPath={location.pathname}
+                  user={user}
                 />
               ))}
             </SidebarMenu>

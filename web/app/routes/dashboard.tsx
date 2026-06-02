@@ -41,7 +41,7 @@ const quickLinks = [
   {
     title: "Team",
     description: "Invite and manage users",
-    to: "/team",
+    to: "/users",
     enabled: true,
   },
 ]

@@ -15,6 +15,17 @@ import { getUser } from "~/lib/auth"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog"
+import {
   Card,
   CardContent,
   CardDescription,
@@ -31,6 +42,13 @@ import {
 } from "~/components/ui/dialog"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select"
 import {
   Table,
   TableBody,
@@ -60,6 +78,12 @@ interface PasswordReveal {
   temporaryPassword: string
 }
 
+type PendingAction =
+  | { type: "promote"; user: TeamUser }
+  | { type: "reset"; user: TeamUser }
+  | { type: "deactivate"; user: TeamUser }
+  | { type: "reactivate"; user: TeamUser }
+
 export async function clientLoader() {
   const users = await api.get<TeamUser[]>("/api/users")
   return { users, currentUser: getUser() }
@@ -79,6 +103,7 @@ export default function TeamPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [created, setCreated] = useState<CreateUserResult | null>(null)
   const [passwordReveal, setPasswordReveal] = useState<PasswordReveal | null>(null)
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
   const [form, setForm] = useState({
     displayName: "",
     email: "",
@@ -115,6 +140,7 @@ export default function TeamPage() {
       )
     } finally {
       setBusyUserId(null)
+      setPendingAction(null)
     }
   }
 
@@ -128,6 +154,7 @@ export default function TeamPage() {
       toast.error(err instanceof Error ? err.message : "Failed to promote user.")
     } finally {
       setBusyUserId(null)
+      setPendingAction(null)
     }
   }
 
@@ -150,6 +177,7 @@ export default function TeamPage() {
       )
     } finally {
       setBusyUserId(null)
+      setPendingAction(null)
     }
   }
 
@@ -165,6 +193,7 @@ export default function TeamPage() {
       )
     } finally {
       setBusyUserId(null)
+      setPendingAction(null)
     }
   }
 
@@ -245,7 +274,7 @@ export default function TeamPage() {
                             variant="outline"
                             size="sm"
                             disabled={busyUserId === user.id}
-                            onClick={() => promote(user)}
+                            onClick={() => setPendingAction({ type: "promote", user })}
                           >
                             <ShieldCheck className="size-4" />
                             Admin
@@ -256,7 +285,7 @@ export default function TeamPage() {
                             variant="outline"
                             size="sm"
                             disabled={busyUserId === user.id}
-                            onClick={() => resetPassword(user)}
+                            onClick={() => setPendingAction({ type: "reset", user })}
                           >
                             <KeyRound className="size-4" />
                             Reset
@@ -267,7 +296,9 @@ export default function TeamPage() {
                             variant="outline"
                             size="sm"
                             disabled={busyUserId === user.id}
-                            onClick={() => deactivate(user)}
+                            onClick={() =>
+                              setPendingAction({ type: "deactivate", user })
+                            }
                           >
                             <UserMinus className="size-4" />
                             Deactivate
@@ -278,7 +309,9 @@ export default function TeamPage() {
                             variant="outline"
                             size="sm"
                             disabled={busyUserId === user.id}
-                            onClick={() => reactivate(user)}
+                            onClick={() =>
+                              setPendingAction({ type: "reactivate", user })
+                            }
                           >
                             <RotateCcw className="size-4" />
                             Reactivate
@@ -356,20 +389,23 @@ export default function TeamPage() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="role">Role</Label>
-                <select
-                  id="role"
+                <Select
                   value={form.role}
-                  onChange={(e) =>
+                  onValueChange={(value) =>
                     setForm((f) => ({
                       ...f,
-                      role: e.target.value as "Admin" | "User",
+                      role: value as "Admin" | "User",
                     }))
                   }
-                  className="h-9 w-full rounded-md border bg-background px-3 text-sm"
                 >
-                  <option value="User">User</option>
-                  <option value="Admin">Admin</option>
-                </select>
+                  <SelectTrigger id="role">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="User">User</SelectItem>
+                    <SelectItem value="Admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <DialogFooter>
                 <Button type="submit" disabled={saving}>
@@ -417,6 +453,91 @@ export default function TeamPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={Boolean(pendingAction)}
+        onOpenChange={(open) => {
+          if (!open) setPendingAction(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia
+              className={
+                pendingAction?.type === "deactivate"
+                  ? "bg-destructive/10 text-destructive"
+                  : "bg-muted text-foreground"
+              }
+            >
+              {pendingAction?.type === "reset" && <KeyRound className="size-5" />}
+              {pendingAction?.type === "promote" && (
+                <ShieldCheck className="size-5" />
+              )}
+              {pendingAction?.type === "deactivate" && (
+                <UserMinus className="size-5" />
+              )}
+              {pendingAction?.type === "reactivate" && (
+                <RotateCcw className="size-5" />
+              )}
+            </AlertDialogMedia>
+            <AlertDialogTitle>{getActionTitle(pendingAction)}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {getActionDescription(pendingAction)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant={pendingAction?.type === "deactivate" ? "destructive" : "default"}
+              disabled={
+                Boolean(pendingAction) && busyUserId === pendingAction?.user.id
+              }
+              onClick={() => {
+                if (!pendingAction) return
+                if (pendingAction.type === "promote") void promote(pendingAction.user)
+                if (pendingAction.type === "reset") void resetPassword(pendingAction.user)
+                if (pendingAction.type === "deactivate")
+                  void deactivate(pendingAction.user)
+                if (pendingAction.type === "reactivate")
+                  void reactivate(pendingAction.user)
+              }}
+            >
+              {getActionLabel(pendingAction)}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
+}
+
+function getActionTitle(action: PendingAction | null) {
+  if (action?.type === "promote") return "Promote to admin?"
+  if (action?.type === "reset") return "Reset password?"
+  if (action?.type === "deactivate") return "Deactivate user?"
+  if (action?.type === "reactivate") return "Reactivate user?"
+  return "Confirm action"
+}
+
+function getActionDescription(action: PendingAction | null) {
+  if (!action) return ""
+
+  if (action.type === "promote")
+    return `${action.user.displayName} will be able to manage users, projects, settings, and authentication.`
+
+  if (action.type === "reset")
+    return `${action.user.displayName}'s active sessions will be revoked and a new temporary password will be shown once.`
+
+  if (action.type === "deactivate")
+    return `${action.user.displayName} will lose access and all active sessions will be revoked.`
+
+  return `${action.user.displayName} will be able to sign in again.`
+}
+
+function getActionLabel(action: PendingAction | null) {
+  if (action?.type === "promote") return "Promote"
+  if (action?.type === "reset") return "Reset password"
+  if (action?.type === "deactivate") return "Deactivate"
+  if (action?.type === "reactivate") return "Reactivate"
+  return "Confirm"
 }

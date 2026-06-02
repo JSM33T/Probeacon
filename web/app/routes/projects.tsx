@@ -1,11 +1,22 @@
 import { type FormEvent, useState } from "react"
 import { Link, useLoaderData, useRevalidator } from "react-router"
-import { FolderKanban, Plus, Trash2 } from "lucide-react"
+import { FolderKanban, Pencil, Plus, Trash2, Users } from "lucide-react"
 import { toast } from "sonner"
 import { api } from "~/lib/api"
 import { getUser } from "~/lib/auth"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog"
 import {
   Card,
   CardContent,
@@ -60,8 +71,13 @@ export default function ProjectsPage() {
   const { revalidate } = useRevalidator()
   const isAdmin = user?.role === "Admin"
   const [createOpen, setCreateOpen] = useState(false)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
+  const [deleteProjectTarget, setDeleteProjectTarget] =
+    useState<Project | null>(null)
   const [form, setForm] = useState({ name: "", description: "" })
+  const [editForm, setEditForm] = useState({ name: "", description: "" })
   const [saving, setSaving] = useState(false)
+  const [editSaving, setEditSaving] = useState(false)
   const [busyProjectId, setBusyProjectId] = useState<string | null>(null)
 
   const createProject = async (e: FormEvent) => {
@@ -93,6 +109,35 @@ export default function ProjectsPage() {
       toast.error(err instanceof Error ? err.message : "Failed to delete project.")
     } finally {
       setBusyProjectId(null)
+      setDeleteProjectTarget(null)
+    }
+  }
+
+  const openEdit = (project: Project) => {
+    setEditingProject(project)
+    setEditForm({
+      name: project.name,
+      description: project.description ?? "",
+    })
+  }
+
+  const updateProject = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!editingProject) return
+
+    setEditSaving(true)
+    try {
+      await api.patch<Project>(`/api/projects/${editingProject.id}`, {
+        name: editForm.name,
+        description: editForm.description || null,
+      })
+      setEditingProject(null)
+      toast.success("Project updated")
+      await revalidate()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to update project.")
+    } finally {
+      setEditSaving(false)
     }
   }
 
@@ -143,7 +188,7 @@ export default function ProjectsPage() {
                   <TableHead>Access</TableHead>
                   <TableHead>Members</TableHead>
                   <TableHead>Created</TableHead>
-                  {isAdmin && <TableHead className="w-0 text-right">Actions</TableHead>}
+                  <TableHead className="w-0 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -170,21 +215,37 @@ export default function ProjectsPage() {
                     <TableCell>
                       {new Date(project.createdAt).toLocaleDateString()}
                     </TableCell>
-                    {isAdmin && (
-                      <TableCell>
-                        <div className="flex justify-end">
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        <Button asChild variant="outline" size="sm">
+                          <Link to={`/projects/${project.id}`}>
+                            <Users className="size-4" />
+                            Manage
+                          </Link>
+                        </Button>
+                        {isAdmin && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openEdit(project)}
+                            >
+                              <Pencil className="size-4" />
+                              Edit
+                            </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             disabled={busyProjectId === project.id}
-                            onClick={() => deleteProject(project)}
+                            onClick={() => setDeleteProjectTarget(project)}
                           >
                             <Trash2 className="size-4" />
                             Delete
                           </Button>
-                        </div>
-                      </TableCell>
-                    )}
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -229,6 +290,86 @@ export default function ProjectsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={Boolean(editingProject)}
+        onOpenChange={(open) => {
+          if (!open) setEditingProject(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit project</DialogTitle>
+            <DialogDescription>
+              Update the project name and description.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={updateProject} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-project-name">Name</Label>
+              <Input
+                id="edit-project-name"
+                value={editForm.name}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, name: e.target.value }))
+                }
+                required
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-project-description">Description</Label>
+              <Input
+                id="edit-project-description"
+                value={editForm.description}
+                onChange={(e) =>
+                  setEditForm((f) => ({ ...f, description: e.target.value }))
+                }
+              />
+            </div>
+            <DialogFooter>
+              <Button type="submit" disabled={editSaving}>
+                {editSaving ? "Saving..." : "Save changes"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={Boolean(deleteProjectTarget)}
+        onOpenChange={(open) => {
+          if (!open) setDeleteProjectTarget(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-destructive/10 text-destructive">
+              <Trash2 className="size-5" />
+            </AlertDialogMedia>
+            <AlertDialogTitle>Delete project?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteProjectTarget
+                ? `${deleteProjectTarget.name} and its project membership assignments will be removed.`
+                : "This project will be removed."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={
+                Boolean(deleteProjectTarget) &&
+                busyProjectId === deleteProjectTarget?.id
+              }
+              onClick={() => {
+                if (deleteProjectTarget) void deleteProject(deleteProjectTarget)
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
