@@ -95,6 +95,7 @@ type NavItem = {
   icon: ComponentType<{ className?: string }>
   badge?: string
   disabled?: boolean
+  adminOnly?: boolean
 }
 
 type NavGroup = {
@@ -136,6 +137,7 @@ const navGroups: NavGroup[] = [
     icon: Settings,
     items: [
       { title: "Settings", href: "/settings", icon: Settings },
+      { title: "Users", href: "/team", icon: Users, adminOnly: true },
       { title: "Authentication", href: "/auth-config", icon: KeyRound },
       { title: "Data Sources", icon: Database, badge: "Soon", disabled: true },
       { title: "Sessions", href: "/sessions", icon: ShieldCheck },
@@ -190,13 +192,18 @@ function AppSidebarLink({
 function AppSidebarGroup({
   group,
   currentPath,
+  user,
 }: {
   group: NavGroup
   currentPath: string
+  user: AuthUser | null
 }) {
   const { isMobile, setOpenMobile } = useSidebar()
   const Icon = group.icon
-  const hasActiveChild = group.items.some((item) =>
+  const visibleItems = group.items.filter(
+    (item) => !item.adminOnly || user?.role === "Admin"
+  )
+  const hasActiveChild = visibleItems.some((item) =>
     isActivePath(currentPath, item.href)
   )
   const closeMobile = () => {
@@ -215,7 +222,7 @@ function AppSidebarGroup({
         </CollapsibleTrigger>
         <CollapsibleContent>
           <SidebarMenuSub>
-            {group.items.map((item) => {
+            {visibleItems.map((item) => {
               const ItemIcon = item.icon
               const active = isActivePath(currentPath, item.href)
 
@@ -400,6 +407,7 @@ function AppSidebar({
                   key={group.title}
                   group={group}
                   currentPath={location.pathname}
+                  user={user}
                 />
               ))}
             </SidebarMenu>

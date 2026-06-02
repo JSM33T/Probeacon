@@ -33,7 +33,12 @@ const quickLinks = [
   },
   { title: "Projects", description: "Coming soon", to: null, enabled: false },
   { title: "Probes", description: "Coming soon", to: null, enabled: false },
-  { title: "Team", description: "Coming soon", to: null, enabled: false },
+  {
+    title: "Team",
+    description: "Invite and manage users",
+    to: "/team",
+    enabled: true,
+  },
 ]
 
 export default function DashboardPage() {

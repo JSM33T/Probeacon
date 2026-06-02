@@ -44,6 +44,8 @@ public class User
 
     public void Deactivate() => IsActive = false;
 
+    public void Activate() => IsActive = true;
+
     public void UpdateDisplayName(string displayName) => DisplayName = displayName;
 
     public void UpdateEmail(string email)
