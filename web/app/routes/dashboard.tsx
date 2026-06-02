@@ -31,7 +31,12 @@ const quickLinks = [
     to: "/settings",
     enabled: true,
   },
-  { title: "Projects", description: "Coming soon", to: null, enabled: false },
+  {
+    title: "Projects",
+    description: "Manage project workspaces",
+    to: "/projects",
+    enabled: true,
+  },
   { title: "Probes", description: "Coming soon", to: null, enabled: false },
   {
     title: "Team",

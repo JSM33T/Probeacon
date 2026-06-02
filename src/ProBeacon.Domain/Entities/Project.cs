@@ -24,4 +24,10 @@ public class Project
         CreatedAt = DateTime.UtcNow,
         CreatedByUserId = createdByUserId
     };
+
+    public void Update(string name, string? description)
+    {
+        Name = name;
+        Description = description;
+    }
 }

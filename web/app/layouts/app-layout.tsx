@@ -125,10 +125,8 @@ const navGroups: NavGroup[] = [
       {
         title: "All Projects",
         icon: FolderKanban,
-        badge: "Soon",
-        disabled: true,
+        href: "/projects",
       },
-      { title: "Members", icon: Users, badge: "Soon", disabled: true },
       { title: "Reports", icon: FileText, badge: "Soon", disabled: true },
     ],
   },

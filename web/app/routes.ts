@@ -9,6 +9,8 @@ export default [
   route("verify-email", "routes/verify-email.tsx"),
   layout("layouts/app-layout.tsx", [
     route("dashboard", "routes/dashboard.tsx"),
+    route("projects", "routes/projects.tsx"),
+    route("projects/:projectId", "routes/project-detail.tsx"),
     route("settings", "routes/settings.tsx"),
     route("sessions", "routes/sessions.tsx"),
     route("team", "routes/team.tsx"),
