@@ -24,7 +24,7 @@ public class GetProjectQueryHandler(
                 project.CreatedAt,
                 project.CreatedByUserId,
                 isAdmin
-                    ? "Admin"
+                    ? "Full access"
                     : project.Members
                         .Where(member => member.UserId == currentUser.UserId && member.User.IsActive)
                         .Select(member => member.CanEdit ? "Editor" : "Viewer")

@@ -17,6 +17,6 @@ public class CreateUserCommandValidator : AbstractValidator<CreateUserCommand>
 
         RuleFor(command => command.Role)
             .Must(role => Enum.TryParse<ProBeacon.Domain.Enums.UserRole>(role, true, out _))
-            .WithMessage("Role must be Admin or User.");
+            .WithMessage("Role must be Admin or Member.");
     }
 }

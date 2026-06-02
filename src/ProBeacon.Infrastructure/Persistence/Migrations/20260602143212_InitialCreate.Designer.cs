@@ -12,7 +12,7 @@ using ProBeacon.Infrastructure.Persistence;
 namespace ProBeacon.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260531104130_InitialCreate")]
+    [Migration("20260602143212_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -103,12 +103,30 @@ namespace ProBeacon.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.HasIndex("Kind", "ExpiresAt");
 
                     b.ToTable("Tenants");
                 });
@@ -129,6 +147,10 @@ namespace ProBeacon.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ValidationRegex")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<string>("Value")
                         .IsRequired()
@@ -161,6 +183,15 @@ namespace ProBeacon.Infrastructure.Persistence.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<DateTime?>("EmailVerificationTokenExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EmailVerificationTokenHash")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("EmailVerifiedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -177,10 +208,59 @@ namespace ProBeacon.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TenantId", "Email")
+                    b.HasIndex("Email")
                         .IsUnique();
 
+                    b.HasIndex("TenantId");
+
                     b.ToTable("Users");
+                });
+
+            modelBuilder.Entity("ProBeacon.Domain.Entities.UserSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IpAddress")
+                        .IsRequired()
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastActiveAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RefreshTokenHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("UserAgent")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RefreshTokenHash");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("UserSessions");
                 });
 
             modelBuilder.Entity("ProBeacon.Domain.Entities.Project", b =>
@@ -249,6 +329,17 @@ namespace ProBeacon.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Tenant");
+                });
+
+            modelBuilder.Entity("ProBeacon.Domain.Entities.UserSession", b =>
+                {
+                    b.HasOne("ProBeacon.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("ProBeacon.Domain.Entities.Project", b =>

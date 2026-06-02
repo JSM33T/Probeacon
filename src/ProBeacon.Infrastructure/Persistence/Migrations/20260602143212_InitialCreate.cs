@@ -17,6 +17,9 @@ namespace ProBeacon.Infrastructure.Persistence.Migrations
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     Name = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Slug = table.Column<string>(type: "character varying(120)", maxLength: 120, nullable: false),
+                    Kind = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -32,6 +35,7 @@ namespace ProBeacon.Infrastructure.Persistence.Migrations
                     TenantId = table.Column<Guid>(type: "uuid", nullable: false),
                     Key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     Value = table.Column<string>(type: "text", nullable: false),
+                    ValidationRegex = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -56,7 +60,10 @@ namespace ProBeacon.Infrastructure.Persistence.Migrations
                     PasswordHash = table.Column<string>(type: "text", nullable: false),
                     Role = table.Column<string>(type: "text", nullable: false),
                     IsActive = table.Column<bool>(type: "boolean", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    EmailVerifiedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    EmailVerificationTokenHash = table.Column<string>(type: "text", nullable: true),
+                    EmailVerificationTokenExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -95,6 +102,32 @@ namespace ProBeacon.Infrastructure.Persistence.Migrations
                         principalTable: "Users",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "UserSessions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    TenantId = table.Column<Guid>(type: "uuid", nullable: false),
+                    RefreshTokenHash = table.Column<string>(type: "text", nullable: false),
+                    UserAgent = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    IpAddress = table.Column<string>(type: "character varying(45)", maxLength: 45, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    LastActiveAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    ExpiresAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    IsRevoked = table.Column<bool>(type: "boolean", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_UserSessions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_UserSessions_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -159,16 +192,42 @@ namespace ProBeacon.Infrastructure.Persistence.Migrations
                 column: "TenantId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Tenants_Kind_ExpiresAt",
+                table: "Tenants",
+                columns: new[] { "Kind", "ExpiresAt" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Tenants_Slug",
+                table: "Tenants",
+                column: "Slug",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_TenantSettings_TenantId_Key",
                 table: "TenantSettings",
                 columns: new[] { "TenantId", "Key" },
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Users_TenantId_Email",
+                name: "IX_Users_Email",
                 table: "Users",
-                columns: new[] { "TenantId", "Email" },
+                column: "Email",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_TenantId",
+                table: "Users",
+                column: "TenantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserSessions_RefreshTokenHash",
+                table: "UserSessions",
+                column: "RefreshTokenHash");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_UserSessions_UserId",
+                table: "UserSessions",
+                column: "UserId");
         }
 
         /// <inheritdoc />
@@ -179,6 +238,9 @@ namespace ProBeacon.Infrastructure.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "TenantSettings");
+
+            migrationBuilder.DropTable(
+                name: "UserSessions");
 
             migrationBuilder.DropTable(
                 name: "Projects");

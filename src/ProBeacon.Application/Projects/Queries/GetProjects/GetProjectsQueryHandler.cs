@@ -23,7 +23,7 @@ public class GetProjectsQueryHandler(
                     project.Description,
                     project.CreatedAt,
                     project.CreatedByUserId,
-                    "Admin",
+                    "Full access",
                     project.Members.Count(member => member.User.IsActive)))
                 .ToListAsync(cancellationToken);
         }
