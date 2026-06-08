@@ -23,6 +23,7 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(assembly);
         services.AddScoped<ITenantProvisioner, TenantProvisioner>();
         services.AddScoped<IProjectAccessService, ProjectAccessService>();
+        services.AddScoped<IPasswordSetupMailer, PasswordSetupMailer>();
 
         return services;
     }

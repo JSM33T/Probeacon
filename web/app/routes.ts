@@ -7,6 +7,8 @@ export default [
   route("login", "routes/login.tsx"),
   route("expired", "routes/expired.tsx"),
   route("verify-email", "routes/verify-email.tsx"),
+  route("set-password", "routes/set-password.tsx"),
+  route("forgot-password", "routes/forgot-password.tsx"),
   layout("layouts/app-layout.tsx", [
     route("dashboard", "routes/dashboard.tsx"),
     route("projects", "routes/projects.tsx"),

@@ -14,6 +14,7 @@ public partial class TenantProvisioner(
     IPasswordHasher passwordHasher,
     ITokenService tokenService,
     IRequestContext requestContext,
+    IEmailSender emailSender,
     ISender sender)
     : ITenantProvisioner
 {
@@ -24,6 +25,13 @@ public partial class TenantProvisioner(
         var email = request.Email.ToLowerInvariant();
         if (await db.Users.AnyAsync(user => user.Email == email, cancellationToken))
             throw new ConflictException("An account already exists for this email.");
+
+        // A brand-new tenant has no per-tenant SMTP settings yet, so only the env-level
+        // fallback can deliver the verification email. Gate up front (before any writes) to
+        // avoid creating a workspace whose verification email is silently dropped.
+        if (!await emailSender.IsConfiguredAsync(Guid.Empty, cancellationToken))
+            throw new EmailNotConfiguredException(
+                "Email delivery (SMTP) is not configured on this server. Set the SMTP environment variables before creating a workspace.");
 
         var slug = await GenerateUniqueSlugAsync(request.OrganizationName, cancellationToken);
         var tenant = Tenant.Create(request.OrganizationName, slug, request.TenantKind, request.ExpiresAt);

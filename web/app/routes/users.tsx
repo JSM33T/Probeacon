@@ -62,7 +62,7 @@ interface TeamUser {
   id: string
   email: string
   displayName: string
-  role: "Admin" | "User"
+  role: "Admin" | "Member"
   isActive: boolean
   isEmailVerified: boolean
   createdAt: string
@@ -70,7 +70,6 @@ interface TeamUser {
 
 interface CreateUserResult {
   user: TeamUser
-  temporaryPassword: string
 }
 
 interface PasswordReveal {
@@ -107,7 +106,7 @@ export default function TeamPage() {
   const [form, setForm] = useState({
     displayName: "",
     email: "",
-    role: "User" as "Admin" | "User",
+    role: "Member" as "Admin" | "Member",
   })
   const [saving, setSaving] = useState(false)
   const [busyUserId, setBusyUserId] = useState<string | null>(null)
@@ -118,8 +117,8 @@ export default function TeamPage() {
     try {
       const result = await api.post<CreateUserResult>("/api/users", form)
       setCreated(result)
-      setForm({ displayName: "", email: "", role: "User" })
-      toast.success("User created")
+      setForm({ displayName: "", email: "", role: "Member" })
+      toast.success("Invitation sent")
       await revalidate()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create user.")
@@ -181,6 +180,22 @@ export default function TeamPage() {
     }
   }
 
+  const emailPasswordReset = async (user: TeamUser) => {
+    setBusyUserId(user.id)
+    try {
+      await api.post(`/api/users/${user.id}/reset-password/email`, {})
+      toast.success(`Reset link sent to ${user.email}`)
+      await revalidate()
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to send reset email."
+      )
+    } finally {
+      setBusyUserId(null)
+      setPendingAction(null)
+    }
+  }
+
   const reactivate = async (user: TeamUser) => {
     setBusyUserId(user.id)
     try {
@@ -198,7 +213,7 @@ export default function TeamPage() {
   }
 
   const copyPassword = async () => {
-    const password = created?.temporaryPassword ?? passwordReveal?.temporaryPassword
+    const password = passwordReveal?.temporaryPassword
     if (!password) return
     await navigator.clipboard.writeText(password)
     toast.success("Temporary password copied")
@@ -226,8 +241,8 @@ export default function TeamPage() {
             Team members
           </CardTitle>
           <CardDescription>
-            New users receive a temporary password that they can change from
-            their profile after signing in.
+            New users receive an email invite to set their own password, then
+            sign in directly.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -338,7 +353,7 @@ export default function TeamPage() {
           <DialogHeader>
             <DialogTitle>Add user</DialogTitle>
             <DialogDescription>
-              Create an account and share the temporary password securely.
+              We'll email them a link to set their own password.
             </DialogDescription>
           </DialogHeader>
 
@@ -346,17 +361,10 @@ export default function TeamPage() {
             <div className="space-y-4">
               <div className="rounded-lg border bg-muted/40 p-4">
                 <p className="text-sm font-medium">{created.user.email}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Temporary password
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Invitation sent. They'll set a password from the emailed link
+                  and be signed in straight away.
                 </p>
-                <div className="mt-2 flex items-center gap-2">
-                  <code className="min-w-0 flex-1 rounded-md bg-background px-3 py-2 text-sm">
-                    {created.temporaryPassword}
-                  </code>
-                  <Button size="icon" variant="outline" onClick={copyPassword}>
-                    <Copy className="size-4" />
-                  </Button>
-                </div>
               </div>
               <DialogFooter>
                 <Button onClick={() => setCreateOpen(false)}>Done</Button>
@@ -394,7 +402,7 @@ export default function TeamPage() {
                   onValueChange={(value) =>
                     setForm((f) => ({
                       ...f,
-                      role: value as "Admin" | "User",
+                      role: value as "Admin" | "Member",
                     }))
                   }
                 >
@@ -402,7 +410,7 @@ export default function TeamPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="User">User</SelectItem>
+                    <SelectItem value="Member">Member</SelectItem>
                     <SelectItem value="Admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>
@@ -487,23 +495,44 @@ export default function TeamPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              variant={pendingAction?.type === "deactivate" ? "destructive" : "default"}
-              disabled={
-                Boolean(pendingAction) && busyUserId === pendingAction?.user.id
-              }
-              onClick={() => {
-                if (!pendingAction) return
-                if (pendingAction.type === "promote") void promote(pendingAction.user)
-                if (pendingAction.type === "reset") void resetPassword(pendingAction.user)
-                if (pendingAction.type === "deactivate")
-                  void deactivate(pendingAction.user)
-                if (pendingAction.type === "reactivate")
-                  void reactivate(pendingAction.user)
-              }}
-            >
-              {getActionLabel(pendingAction)}
-            </AlertDialogAction>
+            {pendingAction?.type === "reset" ? (
+              <>
+                <AlertDialogAction
+                  variant="outline"
+                  disabled={busyUserId === pendingAction?.user.id}
+                  onClick={() => {
+                    if (pendingAction) void resetPassword(pendingAction.user)
+                  }}
+                >
+                  Generate password
+                </AlertDialogAction>
+                <AlertDialogAction
+                  disabled={busyUserId === pendingAction?.user.id}
+                  onClick={() => {
+                    if (pendingAction) void emailPasswordReset(pendingAction.user)
+                  }}
+                >
+                  Email reset link
+                </AlertDialogAction>
+              </>
+            ) : (
+              <AlertDialogAction
+                variant={pendingAction?.type === "deactivate" ? "destructive" : "default"}
+                disabled={
+                  Boolean(pendingAction) && busyUserId === pendingAction?.user.id
+                }
+                onClick={() => {
+                  if (!pendingAction) return
+                  if (pendingAction.type === "promote") void promote(pendingAction.user)
+                  if (pendingAction.type === "deactivate")
+                    void deactivate(pendingAction.user)
+                  if (pendingAction.type === "reactivate")
+                    void reactivate(pendingAction.user)
+                }}
+              >
+                {getActionLabel(pendingAction)}
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -526,7 +555,7 @@ function getActionDescription(action: PendingAction | null) {
     return `${action.user.displayName} will be able to manage users, projects, settings, and authentication.`
 
   if (action.type === "reset")
-    return `${action.user.displayName}'s active sessions will be revoked and a new temporary password will be shown once.`
+    return `Email ${action.user.displayName} a link to set their own password, or generate a temporary password to share manually. Existing sessions are revoked once the new password is set.`
 
   if (action.type === "deactivate")
     return `${action.user.displayName} will lose access and all active sessions will be revoked.`

@@ -11,6 +11,9 @@ public class TestSmtpCommandHandler(ICurrentUser currentUser, IEmailSender email
         if (!currentUser.Email.Contains('@'))
             return new TestSmtpResult(false, "Set a real email address in your profile before testing SMTP.");
 
+        if (!await emailSender.IsConfiguredAsync(currentUser.TenantId, cancellationToken))
+            return new TestSmtpResult(false, "SMTP is not configured. Save your SMTP settings before testing.");
+
         try
         {
             await emailSender.SendAsync(

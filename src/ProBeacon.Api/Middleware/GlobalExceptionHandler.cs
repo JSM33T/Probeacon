@@ -33,6 +33,7 @@ public sealed class GlobalExceptionHandler(
             ForbiddenException => StatusCodes.Status403Forbidden,
             KeyNotFoundException => StatusCodes.Status404NotFound,
             ConflictException => StatusCodes.Status409Conflict,
+            EmailNotConfiguredException => StatusCodes.Status409Conflict,
             WorkspaceExpiredException => StatusCodes.Status410Gone,
             InvalidOperationException => StatusCodes.Status400BadRequest,
             ArgumentException => StatusCodes.Status400BadRequest,
@@ -59,6 +60,8 @@ public sealed class GlobalExceptionHandler(
         problemDetails.Extensions["traceId"] = httpContext.TraceIdentifier;
         if (exception is WorkspaceExpiredException)
             problemDetails.Extensions["code"] = "workspace_expired";
+        if (exception is EmailNotConfiguredException)
+            problemDetails.Extensions["code"] = "smtp_not_configured";
 
         return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
         {

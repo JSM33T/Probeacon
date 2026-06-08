@@ -3,6 +3,7 @@ using System.Text;
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using ProBeacon.Application.Common.Exceptions;
 using ProBeacon.Application.Common.Interfaces;
 using ProBeacon.Application.Common.Models;
 using ProBeacon.Application.Common.Options;
@@ -12,6 +13,7 @@ namespace ProBeacon.Application.Auth.Commands.SendVerificationEmail;
 public class SendVerificationEmailCommandHandler(
     IApplicationDbContext db,
     IEmailJobPublisher publisher,
+    IEmailSender emailSender,
     IRequestContext requestContext,
     IOptions<AppOptions> appOptions)
     : ICommandHandler<SendVerificationEmailCommand>
@@ -23,6 +25,9 @@ public class SendVerificationEmailCommandHandler(
 
         if (user is null || user.IsEmailVerified)
             return default;
+
+        if (!await emailSender.IsConfiguredAsync(user.TenantId, cancellationToken))
+            throw new EmailNotConfiguredException();
 
         var rawToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         var tokenHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(rawToken)))

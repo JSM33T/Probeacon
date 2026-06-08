@@ -42,6 +42,9 @@ public class SmtpEmailSender(
         await client.DisconnectAsync(true, cancellationToken);
     }
 
+    public async Task<bool> IsConfiguredAsync(Guid tenantId, CancellationToken cancellationToken = default)
+        => (await ResolveOptionsAsync(tenantId, cancellationToken)).IsConfigured;
+
     private async Task<EmailOptions> ResolveOptionsAsync(Guid tenantId, CancellationToken ct)
     {
         if (tenantId == Guid.Empty)

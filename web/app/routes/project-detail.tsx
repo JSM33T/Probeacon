@@ -74,7 +74,7 @@ interface TeamUser {
   id: string
   email: string
   displayName: string
-  role: "Admin" | "User"
+  role: "Admin" | "Member"
   isActive: boolean
 }
 

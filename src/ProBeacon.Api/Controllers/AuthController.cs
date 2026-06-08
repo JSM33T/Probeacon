@@ -3,8 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 using ProBeacon.Application.Auth.Commands.Login;
 using ProBeacon.Application.Auth.Commands.Logout;
 using ProBeacon.Application.Auth.Commands.RefreshToken;
+using ProBeacon.Application.Auth.Commands.RequestPasswordReset;
 using ProBeacon.Application.Auth.Commands.RevokeSession;
 using ProBeacon.Application.Auth.Commands.SendVerificationEmail;
+using ProBeacon.Application.Auth.Commands.SetPassword;
 using ProBeacon.Application.Auth.Commands.Signup;
 using ProBeacon.Application.Auth.Commands.VerifyEmail;
 using ProBeacon.Application.Auth.Queries.GetSessions;
@@ -57,6 +59,17 @@ public class AuthController(ICurrentUser currentUser) : ApiControllerBase
 
     [HttpPost("verify-email")]
     public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailCommand command, CancellationToken cancellationToken)
+    {
+        await Sender.Send(command, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPost("set-password")]
+    public async Task<IActionResult> SetPassword([FromBody] SetPasswordCommand command, CancellationToken cancellationToken)
+        => Ok(await Sender.Send(command, cancellationToken));
+
+    [HttpPost("forgot-password")]
+    public async Task<IActionResult> ForgotPassword([FromBody] RequestPasswordResetCommand command, CancellationToken cancellationToken)
     {
         await Sender.Send(command, cancellationToken);
         return NoContent();

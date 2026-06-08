@@ -38,6 +38,9 @@ public class User
     public string? EmailVerificationTokenHash { get; private set; }
     public DateTime? EmailVerificationTokenExpiresAt { get; private set; }
 
+    public string? PasswordResetTokenHash { get; private set; }
+    public DateTime? PasswordResetTokenExpiresAt { get; private set; }
+
     public bool IsEmailVerified => EmailVerifiedAt.HasValue;
 
     public void SetRole(UserRole role) => Role = role;
@@ -68,5 +71,23 @@ public class User
         EmailVerifiedAt = DateTime.UtcNow;
         EmailVerificationTokenHash = null;
         EmailVerificationTokenExpiresAt = null;
+    }
+
+    public void SetPasswordResetToken(string tokenHash, DateTime expiresAt)
+    {
+        PasswordResetTokenHash = tokenHash;
+        PasswordResetTokenExpiresAt = expiresAt;
+    }
+
+    /// <summary>
+    /// Applies a new password set via a reset/invite link, clears the token, and — since
+    /// receiving the emailed link proves ownership of the address — marks the email verified.
+    /// </summary>
+    public void CompletePasswordReset(string passwordHash)
+    {
+        PasswordHash = passwordHash;
+        PasswordResetTokenHash = null;
+        PasswordResetTokenExpiresAt = null;
+        EmailVerifiedAt ??= DateTime.UtcNow;
     }
 }

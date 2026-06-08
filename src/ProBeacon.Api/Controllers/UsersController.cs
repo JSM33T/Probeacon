@@ -6,6 +6,7 @@ using ProBeacon.Application.Users.Commands.DeactivateUser;
 using ProBeacon.Application.Users.Commands.PromoteToAdmin;
 using ProBeacon.Application.Users.Commands.ReactivateUser;
 using ProBeacon.Application.Users.Commands.ResetUserPassword;
+using ProBeacon.Application.Users.Commands.SendPasswordSetupEmail;
 using ProBeacon.Application.Users.Commands.UpdateProfile;
 using ProBeacon.Application.Users.Queries.GetProfile;
 using ProBeacon.Application.Users.Queries.GetUsers;
@@ -59,6 +60,14 @@ public class UsersController : ApiControllerBase
     {
         var result = await Sender.Send(new ResetUserPasswordCommand(userId), cancellationToken);
         return Ok(result);
+    }
+
+    [Authorize(Policy = AuthorizationPolicies.AdminOnly)]
+    [HttpPost("{userId:guid}/reset-password/email")]
+    public async Task<IActionResult> EmailPasswordReset(Guid userId, CancellationToken cancellationToken)
+    {
+        await Sender.Send(new SendPasswordSetupEmailCommand(userId, PasswordSetupKind.Reset), cancellationToken);
+        return NoContent();
     }
 
     [Authorize(Policy = AuthorizationPolicies.AdminOnly)]
