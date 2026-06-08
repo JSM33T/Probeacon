@@ -16,13 +16,16 @@ public class ProjectAccessService(IApplicationDbContext db, ICurrentUser current
                 && user.Role == UserRole.Admin,
             cancellationToken);
 
-    public async Task EnsureCanViewAsync(Guid projectId, CancellationToken cancellationToken = default)
-        => await EnsureAccessAsync(projectId, requireEdit: false, cancellationToken);
+    public Task EnsureCanViewAsync(Guid projectId, CancellationToken cancellationToken = default)
+        => EnsureAccessAsync(projectId, ProjectRole.Viewer, cancellationToken);
 
-    public async Task EnsureCanEditAsync(Guid projectId, CancellationToken cancellationToken = default)
-        => await EnsureAccessAsync(projectId, requireEdit: true, cancellationToken);
+    public Task EnsureCanEditAsync(Guid projectId, CancellationToken cancellationToken = default)
+        => EnsureAccessAsync(projectId, ProjectRole.Editor, cancellationToken);
 
-    private async Task EnsureAccessAsync(Guid projectId, bool requireEdit, CancellationToken cancellationToken)
+    public Task EnsureCanManageAsync(Guid projectId, CancellationToken cancellationToken = default)
+        => EnsureAccessAsync(projectId, ProjectRole.Manager, cancellationToken);
+
+    private async Task EnsureAccessAsync(Guid projectId, ProjectRole minimumRole, CancellationToken cancellationToken)
     {
         var projectExists = await db.Projects.AnyAsync(
             project => project.Id == projectId && project.TenantId == currentUser.TenantId,
@@ -31,6 +34,7 @@ public class ProjectAccessService(IApplicationDbContext db, ICurrentUser current
         if (!projectExists)
             throw new KeyNotFoundException($"Project {projectId} not found.");
 
+        // Global admins have full access to every project regardless of membership.
         if (await IsCurrentUserAdminAsync(cancellationToken))
             return;
 
@@ -39,7 +43,7 @@ public class ProjectAccessService(IApplicationDbContext db, ICurrentUser current
                 member.ProjectId == projectId
                 && member.UserId == currentUser.UserId
                 && member.User.IsActive
-                && (requireEdit ? member.CanEdit : member.CanView),
+                && member.Role >= minimumRole,
             cancellationToken);
 
         if (!hasAccess)

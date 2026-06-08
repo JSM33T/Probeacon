@@ -2,7 +2,7 @@ import { type FormEvent, useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router"
 import { XCircle } from "lucide-react"
 import { api } from "~/lib/api"
-import { setSession } from "~/lib/auth"
+import { setToken } from "~/lib/auth"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
@@ -41,12 +41,11 @@ export default function SetPasswordPage() {
 
     setLoading(true)
     try {
-      const res = await api.post<{
-        accessToken: string
-        refreshToken: string
-        sessionId: string
-      }>("/api/auth/set-password", { token, password: form.password })
-      setSession(res.accessToken, res.refreshToken, res.sessionId)
+      const res = await api.post<{ accessToken: string }>(
+        "/api/auth/set-password",
+        { token, password: form.password }
+      )
+      setToken(res.accessToken)
       navigate("/dashboard", { replace: true })
     } catch (err) {
       setError(

@@ -65,7 +65,7 @@ import {
   useSidebar,
 } from "~/components/ui/sidebar"
 import { api } from "~/lib/api"
-import { clearSession, getToken, getUser, type AuthUser } from "~/lib/auth"
+import { clearSession, ensureSession, getUser, type AuthUser } from "~/lib/auth"
 import { cn } from "~/lib/utils"
 
 export async function clientLoader() {
@@ -77,7 +77,7 @@ export async function clientLoader() {
     return redirect("/setup")
   }
 
-  if (!getToken()) return redirect("/login")
+  if (!(await ensureSession())) return redirect("/login")
   return { user: getUser() }
 }
 

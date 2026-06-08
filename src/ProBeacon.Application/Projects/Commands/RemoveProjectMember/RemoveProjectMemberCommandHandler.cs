@@ -4,17 +4,15 @@ using ProBeacon.Application.Common.Interfaces;
 
 namespace ProBeacon.Application.Projects.Commands.RemoveProjectMember;
 
-public class RemoveProjectMemberCommandHandler(IApplicationDbContext db, ICurrentUser currentUser)
+public class RemoveProjectMemberCommandHandler(
+    IApplicationDbContext db,
+    IProjectAccessService projectAccess)
     : ICommandHandler<RemoveProjectMemberCommand>
 {
     public async ValueTask<Unit> Handle(RemoveProjectMemberCommand request, CancellationToken cancellationToken)
     {
-        var projectExists = await db.Projects.AnyAsync(
-            project => project.Id == request.ProjectId && project.TenantId == currentUser.TenantId,
-            cancellationToken);
-
-        if (!projectExists)
-            throw new KeyNotFoundException($"Project {request.ProjectId} not found.");
+        // Project Managers or global Admins only. Also throws 404 if the project isn't in the tenant.
+        await projectAccess.EnsureCanManageAsync(request.ProjectId, cancellationToken);
 
         var member = await db.ProjectMembers
             .FirstOrDefaultAsync(

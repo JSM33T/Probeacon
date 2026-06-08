@@ -49,7 +49,7 @@ interface Project {
   description: string | null
   createdAt: string
   createdByUserId: string
-  accessRole: "Admin" | "Editor" | "Viewer"
+  accessRole: "Full access" | "Manager" | "Editor" | "Viewer"
   memberCount: number
 }
 
@@ -207,7 +207,14 @@ export default function ProjectsPage() {
                       </Link>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={project.accessRole === "Admin" ? "default" : "secondary"}>
+                      <Badge
+                        variant={
+                          project.accessRole === "Full access" ||
+                          project.accessRole === "Manager"
+                            ? "default"
+                            : "secondary"
+                        }
+                      >
                         {project.accessRole}
                       </Badge>
                     </TableCell>

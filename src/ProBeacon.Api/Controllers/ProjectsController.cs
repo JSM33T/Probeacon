@@ -6,6 +6,7 @@ using ProBeacon.Application.Projects.Commands.DeleteProject;
 using ProBeacon.Application.Projects.Commands.RemoveProjectMember;
 using ProBeacon.Application.Projects.Commands.UpdateProject;
 using ProBeacon.Application.Projects.Commands.UpsertProjectMember;
+using ProBeacon.Application.Projects.Queries.GetAssignableUsers;
 using ProBeacon.Application.Projects.Queries.GetProject;
 using ProBeacon.Application.Projects.Queries.GetProjectMembers;
 using ProBeacon.Application.Projects.Queries.GetProjects;
@@ -28,8 +29,9 @@ public class ProjectsController : ApiControllerBase
     public async Task<IActionResult> GetProject(Guid projectId, CancellationToken cancellationToken)
         => Ok(await Sender.Send(new GetProjectQuery(projectId), cancellationToken));
 
+    // Admins and project editors (CanEdit) may update name/description — enforced in the handler
+    // via IProjectAccessService.EnsureCanEditAsync, not a blanket AdminOnly policy.
     [HttpPatch("{projectId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.AdminOnly)]
     public async Task<IActionResult> Update(
         Guid projectId,
         UpdateProjectRequest request,
@@ -46,13 +48,17 @@ public class ProjectsController : ApiControllerBase
         return NoContent();
     }
 
+    // Member-management endpoints are open to project Managers as well as global Admins —
+    // enforced per-project in the handlers via IProjectAccessService.EnsureCanManageAsync.
     [HttpGet("{projectId:guid}/members")]
-    [Authorize(Policy = AuthorizationPolicies.AdminOnly)]
     public async Task<IActionResult> GetMembers(Guid projectId, CancellationToken cancellationToken)
         => Ok(await Sender.Send(new GetProjectMembersQuery(projectId), cancellationToken));
 
+    [HttpGet("{projectId:guid}/assignable-users")]
+    public async Task<IActionResult> GetAssignableUsers(Guid projectId, CancellationToken cancellationToken)
+        => Ok(await Sender.Send(new GetAssignableUsersQuery(projectId), cancellationToken));
+
     [HttpPut("{projectId:guid}/members/{userId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.AdminOnly)]
     public async Task<IActionResult> UpsertMember(
         Guid projectId,
         Guid userId,
@@ -63,7 +69,6 @@ public class ProjectsController : ApiControllerBase
             cancellationToken));
 
     [HttpDelete("{projectId:guid}/members/{userId:guid}")]
-    [Authorize(Policy = AuthorizationPolicies.AdminOnly)]
     public async Task<IActionResult> RemoveMember(
         Guid projectId,
         Guid userId,

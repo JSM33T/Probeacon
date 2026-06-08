@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from "react"
 import { redirect, useNavigate } from "react-router"
 import { api } from "~/lib/api"
-import { getToken, setSession } from "~/lib/auth"
+import { ensureSession, setToken } from "~/lib/auth"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
@@ -14,7 +14,7 @@ import {
 } from "~/components/ui/card"
 
 export async function clientLoader() {
-  if (getToken()) return redirect("/dashboard")
+  if (await ensureSession()) return redirect("/dashboard")
   const status = await api.get<{ configured: boolean; deploymentMode: string }>(
     "/api/setup/status"
   )
@@ -51,12 +51,8 @@ export default function SetupPage() {
     setError(null)
     setLoading(true)
     try {
-      const res = await api.post<{
-        accessToken: string
-        refreshToken: string
-        sessionId: string
-      }>("/api/setup", form)
-      setSession(res.accessToken, res.refreshToken, res.sessionId)
+      const res = await api.post<{ accessToken: string }>("/api/setup", form)
+      setToken(res.accessToken)
       navigate("/dashboard", { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : "Setup failed.")

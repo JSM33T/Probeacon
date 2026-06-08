@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { Link, useSearchParams } from "react-router"
 import { CheckCircle, XCircle } from "lucide-react"
 import { api } from "~/lib/api"
-import { getRefreshToken, getSessionId, setSession } from "~/lib/auth"
+import { refreshSession } from "~/lib/auth"
 import { Button } from "~/components/ui/button"
 
 type Status = "verifying" | "success" | "error"
@@ -22,20 +22,9 @@ export default function VerifyEmailPage() {
       try {
         await api.post("/api/auth/verify-email", { token })
 
-        // refresh the JWT so email_verified claim updates immediately
-        const refreshToken = getRefreshToken()
-        const sessionId = getSessionId()
-        if (refreshToken && sessionId) {
-          try {
-            const res = await api.post<{
-              accessToken: string
-              refreshToken: string
-            }>("/api/auth/refresh", { sessionId, refreshToken })
-            setSession(res.accessToken, res.refreshToken, sessionId)
-          } catch {
-            // non-fatal — banner will disappear on next login
-          }
-        }
+        // Re-mint the access token so the email_verified claim updates immediately.
+        // Non-fatal — the banner otherwise clears on the next refresh/login.
+        await refreshSession()
 
         setStatus("success")
       } catch (err: unknown) {

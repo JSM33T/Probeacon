@@ -3,7 +3,7 @@ namespace ProBeacon.Application.Auth.Commands.Signup;
 public record SignupResult(
     string AccessToken,
     DateTime ExpiresAt,
-    string RefreshToken,
+    string? RefreshToken,
     Guid SessionId,
     Guid TenantId,
     string TenantSlug,

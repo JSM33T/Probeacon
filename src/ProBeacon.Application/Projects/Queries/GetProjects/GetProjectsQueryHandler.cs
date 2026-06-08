@@ -1,6 +1,7 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 using ProBeacon.Application.Common.Interfaces;
+using ProBeacon.Domain.Enums;
 
 namespace ProBeacon.Application.Projects.Queries.GetProjects;
 
@@ -28,12 +29,12 @@ public class GetProjectsQueryHandler(
                 .ToListAsync(cancellationToken);
         }
 
+        // Every project role can view, so membership alone grants list visibility.
         return await db.ProjectMembers
             .Where(member =>
                 member.UserId == currentUser.UserId
                 && member.User.IsActive
-                && member.Project.TenantId == currentUser.TenantId
-                && member.CanView)
+                && member.Project.TenantId == currentUser.TenantId)
             .OrderBy(member => member.Project.Name)
             .Select(member => new ProjectDto(
                 member.Project.Id,
@@ -41,7 +42,9 @@ public class GetProjectsQueryHandler(
                 member.Project.Description,
                 member.Project.CreatedAt,
                 member.Project.CreatedByUserId,
-                member.CanEdit ? "Editor" : "Viewer",
+                member.Role == ProjectRole.Manager ? "Manager"
+                    : member.Role == ProjectRole.Editor ? "Editor"
+                    : "Viewer",
                 member.Project.Members.Count(projectMember => projectMember.User.IsActive)))
             .ToListAsync(cancellationToken);
     }

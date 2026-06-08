@@ -1,4 +1,5 @@
 using FluentValidation;
+using ProBeacon.Domain.Enums;
 
 namespace ProBeacon.Application.Projects.Commands.UpsertProjectMember;
 
@@ -13,8 +14,7 @@ public class UpsertProjectMemberCommandValidator : AbstractValidator<UpsertProje
             .NotEmpty();
 
         RuleFor(command => command.Role)
-            .Must(role => role.Equals("Viewer", StringComparison.OrdinalIgnoreCase)
-                || role.Equals("Editor", StringComparison.OrdinalIgnoreCase))
-            .WithMessage("Role must be Viewer or Editor.");
+            .Must(role => Enum.TryParse<ProjectRole>(role, ignoreCase: true, out _))
+            .WithMessage("Role must be Viewer, Editor, or Manager.");
     }
 }

@@ -1,6 +1,6 @@
 import { redirect, useLoaderData } from "react-router"
 import { api } from "~/lib/api"
-import { clearSession, getToken } from "~/lib/auth"
+import { clearSession, ensureSession } from "~/lib/auth"
 import { Button } from "~/components/ui/button"
 
 interface SetupStatus {
@@ -17,7 +17,7 @@ export async function clientLoader() {
       clearSession()
       return redirect("/setup")
     }
-    if (getToken()) return redirect("/dashboard")
+    if (await ensureSession()) return redirect("/dashboard")
     return redirect(status.configured ? "/login" : "/setup")
   } catch {
     return { error: true }

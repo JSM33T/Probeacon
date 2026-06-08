@@ -6,6 +6,7 @@ import {
   Plus,
   RotateCcw,
   ShieldCheck,
+  ShieldOff,
   UserMinus,
   Users,
 } from "lucide-react"
@@ -79,6 +80,7 @@ interface PasswordReveal {
 
 type PendingAction =
   | { type: "promote"; user: TeamUser }
+  | { type: "demote"; user: TeamUser }
   | { type: "reset"; user: TeamUser }
   | { type: "deactivate"; user: TeamUser }
   | { type: "reactivate"; user: TeamUser }
@@ -151,6 +153,20 @@ export default function TeamPage() {
       await revalidate()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to promote user.")
+    } finally {
+      setBusyUserId(null)
+      setPendingAction(null)
+    }
+  }
+
+  const demote = async (user: TeamUser) => {
+    setBusyUserId(user.id)
+    try {
+      await api.post(`/api/users/${user.id}/demote`, {})
+      toast.success(`${user.displayName} is now a member`)
+      await revalidate()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to demote user.")
     } finally {
       setBusyUserId(null)
       setPendingAction(null)
@@ -293,6 +309,17 @@ export default function TeamPage() {
                           >
                             <ShieldCheck className="size-4" />
                             Admin
+                          </Button>
+                        )}
+                        {user.role === "Admin" && user.isActive && !isCurrentUser && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={busyUserId === user.id}
+                            onClick={() => setPendingAction({ type: "demote", user })}
+                          >
+                            <ShieldOff className="size-4" />
+                            Member
                           </Button>
                         )}
                         {user.isActive && (
@@ -481,6 +508,9 @@ export default function TeamPage() {
               {pendingAction?.type === "promote" && (
                 <ShieldCheck className="size-5" />
               )}
+              {pendingAction?.type === "demote" && (
+                <ShieldOff className="size-5" />
+              )}
               {pendingAction?.type === "deactivate" && (
                 <UserMinus className="size-5" />
               )}
@@ -524,6 +554,7 @@ export default function TeamPage() {
                 onClick={() => {
                   if (!pendingAction) return
                   if (pendingAction.type === "promote") void promote(pendingAction.user)
+                  if (pendingAction.type === "demote") void demote(pendingAction.user)
                   if (pendingAction.type === "deactivate")
                     void deactivate(pendingAction.user)
                   if (pendingAction.type === "reactivate")
@@ -542,6 +573,7 @@ export default function TeamPage() {
 
 function getActionTitle(action: PendingAction | null) {
   if (action?.type === "promote") return "Promote to admin?"
+  if (action?.type === "demote") return "Demote to member?"
   if (action?.type === "reset") return "Reset password?"
   if (action?.type === "deactivate") return "Deactivate user?"
   if (action?.type === "reactivate") return "Reactivate user?"
@@ -554,6 +586,9 @@ function getActionDescription(action: PendingAction | null) {
   if (action.type === "promote")
     return `${action.user.displayName} will be able to manage users, projects, settings, and authentication.`
 
+  if (action.type === "demote")
+    return `${action.user.displayName} will lose admin access and can no longer manage users, settings, or authentication.`
+
   if (action.type === "reset")
     return `Email ${action.user.displayName} a link to set their own password, or generate a temporary password to share manually. Existing sessions are revoked once the new password is set.`
 
@@ -565,6 +600,7 @@ function getActionDescription(action: PendingAction | null) {
 
 function getActionLabel(action: PendingAction | null) {
   if (action?.type === "promote") return "Promote"
+  if (action?.type === "demote") return "Demote"
   if (action?.type === "reset") return "Reset password"
   if (action?.type === "deactivate") return "Deactivate"
   if (action?.type === "reactivate") return "Reactivate"

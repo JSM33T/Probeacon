@@ -10,6 +10,11 @@ public class ProjectMemberConfiguration : IEntityTypeConfiguration<ProjectMember
     {
         builder.HasKey(pm => pm.Id);
 
+        // store the ProjectRole enum as its int value
+        builder.Property(pm => pm.Role)
+            .HasConversion<int>()
+            .IsRequired();
+
         // one membership record per user per project
         builder.HasIndex(pm => new { pm.ProjectId, pm.UserId })
             .IsUnique();

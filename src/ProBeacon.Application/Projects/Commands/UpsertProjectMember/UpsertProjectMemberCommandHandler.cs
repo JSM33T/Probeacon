@@ -2,22 +2,24 @@ using Mediator;
 using Microsoft.EntityFrameworkCore;
 using ProBeacon.Application.Common.Interfaces;
 using ProBeacon.Domain.Entities;
+using ProBeacon.Domain.Enums;
 
 namespace ProBeacon.Application.Projects.Commands.UpsertProjectMember;
 
-public class UpsertProjectMemberCommandHandler(IApplicationDbContext db, ICurrentUser currentUser)
+public class UpsertProjectMemberCommandHandler(
+    IApplicationDbContext db,
+    ICurrentUser currentUser,
+    IProjectAccessService projectAccess)
     : IRequestHandler<UpsertProjectMemberCommand, ProjectMemberDto>
 {
     public async ValueTask<ProjectMemberDto> Handle(
         UpsertProjectMemberCommand request,
         CancellationToken cancellationToken)
     {
-        var projectExists = await db.Projects.AnyAsync(
-            project => project.Id == request.ProjectId && project.TenantId == currentUser.TenantId,
-            cancellationToken);
+        // Project Managers or global Admins only. Also throws 404 if the project isn't in the tenant.
+        await projectAccess.EnsureCanManageAsync(request.ProjectId, cancellationToken);
 
-        if (!projectExists)
-            throw new KeyNotFoundException($"Project {request.ProjectId} not found.");
+        var role = Enum.Parse<ProjectRole>(request.Role, ignoreCase: true);
 
         var user = await db.Users
             .FirstOrDefaultAsync(
@@ -28,7 +30,6 @@ public class UpsertProjectMemberCommandHandler(IApplicationDbContext db, ICurren
         if (!user.IsActive)
             throw new InvalidOperationException("Inactive users cannot be assigned to projects.");
 
-        var isEditor = request.Role.Equals("Editor", StringComparison.OrdinalIgnoreCase);
         var member = await db.ProjectMembers
             .FirstOrDefaultAsync(
                 member => member.ProjectId == request.ProjectId && member.UserId == request.UserId,
@@ -36,17 +37,12 @@ public class UpsertProjectMemberCommandHandler(IApplicationDbContext db, ICurren
 
         if (member is null)
         {
-            member = ProjectMember.Create(
-                request.ProjectId,
-                request.UserId,
-                canView: true,
-                canEdit: isEditor,
-                currentUser.UserId);
+            member = ProjectMember.Create(request.ProjectId, request.UserId, role, currentUser.UserId);
             db.ProjectMembers.Add(member);
         }
         else
         {
-            member.UpdatePermissions(canView: true, canEdit: isEditor);
+            member.SetRole(role);
         }
 
         await db.SaveChangesAsync(cancellationToken);
@@ -56,7 +52,7 @@ public class UpsertProjectMemberCommandHandler(IApplicationDbContext db, ICurren
             user.Email,
             user.DisplayName,
             user.IsActive,
-            isEditor ? "Editor" : "Viewer",
+            role.ToString(),
             member.AssignedAt,
             member.AssignedByUserId);
     }

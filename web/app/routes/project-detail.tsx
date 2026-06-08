@@ -50,13 +50,16 @@ import {
   TableRow,
 } from "~/components/ui/table"
 
+type ProjectAccessRole = "Full access" | "Manager" | "Editor" | "Viewer"
+type AssignableRole = "Viewer" | "Editor" | "Manager"
+
 interface Project {
   id: string
   name: string
   description: string | null
   createdAt: string
   createdByUserId: string
-  accessRole: "Admin" | "Editor" | "Viewer"
+  accessRole: ProjectAccessRole
   memberCount: number
 }
 
@@ -65,16 +68,15 @@ interface ProjectMember {
   email: string
   displayName: string
   isActive: boolean
-  role: "Editor" | "Viewer"
+  role: AssignableRole
   assignedAt: string
   assignedByUserId: string
 }
 
-interface TeamUser {
+interface AssignableUser {
   id: string
   email: string
   displayName: string
-  role: "Admin" | "Member"
   isActive: boolean
 }
 
@@ -82,11 +84,13 @@ export async function clientLoader({ params }: { params: { projectId: string } }
   const user = getUser()
   const project = await api.get<Project>(`/api/projects/${params.projectId}`)
 
-  if (user?.role !== "Admin") return { project, members: [], users: [], user }
+  // Managers (and global admins) can manage members; everyone else just views.
+  const canManage = user?.role === "Admin" || project.accessRole === "Manager"
+  if (!canManage) return { project, members: [], users: [], user }
 
   const [members, users] = await Promise.all([
     api.get<ProjectMember[]>(`/api/projects/${params.projectId}/members`),
-    api.get<TeamUser[]>("/api/users"),
+    api.get<AssignableUser[]>(`/api/projects/${params.projectId}/assignable-users`),
   ])
 
   return { project, members, users, user }
@@ -104,6 +108,10 @@ export default function ProjectDetailPage() {
   const { project, members, users, user } = useLoaderData<typeof clientLoader>()
   const { revalidate } = useRevalidator()
   const isAdmin = user?.role === "Admin"
+  // Editors & Managers (and admins) can edit name/description; only Managers/admins manage members.
+  const canEdit =
+    isAdmin || project.accessRole === "Editor" || project.accessRole === "Manager"
+  const canManage = isAdmin || project.accessRole === "Manager"
   const [form, setForm] = useState({
     name: project.name,
     description: project.description ?? "",
@@ -111,7 +119,7 @@ export default function ProjectDetailPage() {
   const [savingProject, setSavingProject] = useState(false)
   const [assignment, setAssignment] = useState({
     userId: "",
-    role: "Viewer" as "Viewer" | "Editor",
+    role: "Viewer" as AssignableRole,
   })
   const [assignOpen, setAssignOpen] = useState(false)
   const [removeMemberTarget, setRemoveMemberTarget] =
@@ -161,7 +169,7 @@ export default function ProjectDetailPage() {
     }
   }
 
-  const updateMemberRole = async (member: ProjectMember, role: "Viewer" | "Editor") => {
+  const updateMemberRole = async (member: ProjectMember, role: AssignableRole) => {
     setBusyUserId(member.userId)
     try {
       await api.put(`/api/projects/${project.id}/members/${member.userId}`, { role })
@@ -204,7 +212,13 @@ export default function ProjectDetailPage() {
               {project.description || "No description"}
             </p>
           </div>
-          <Badge variant={project.accessRole === "Admin" ? "default" : "secondary"}>
+          <Badge
+            variant={
+              project.accessRole === "Full access" || project.accessRole === "Manager"
+                ? "default"
+                : "secondary"
+            }
+          >
             {project.accessRole}
           </Badge>
         </div>
@@ -218,7 +232,7 @@ export default function ProjectDetailPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isAdmin ? (
+          {canEdit ? (
             <form onSubmit={saveProject} className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="name">Name</Label>
@@ -257,14 +271,14 @@ export default function ProjectDetailPage() {
         </CardContent>
       </Card>
 
-      {isAdmin && (
+      {canManage && (
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <CardTitle>Members</CardTitle>
                 <CardDescription>
-                  Assign users as viewers or editors for this project.
+                  Assign users as viewers, editors, or managers for this project.
                 </CardDescription>
               </div>
               <Button onClick={() => setAssignOpen(true)}>
@@ -296,10 +310,7 @@ export default function ProjectDetailPage() {
                         value={member.role}
                         disabled={busyUserId === member.userId || !member.isActive}
                         onValueChange={(value) =>
-                          updateMemberRole(
-                            member,
-                            value as "Viewer" | "Editor"
-                          )
+                          updateMemberRole(member, value as AssignableRole)
                         }
                       >
                         <SelectTrigger className="h-8 w-[7.5rem]">
@@ -308,6 +319,7 @@ export default function ProjectDetailPage() {
                         <SelectContent>
                           <SelectItem value="Viewer">Viewer</SelectItem>
                           <SelectItem value="Editor">Editor</SelectItem>
+                          <SelectItem value="Manager">Manager</SelectItem>
                         </SelectContent>
                       </Select>
                     </TableCell>
@@ -377,7 +389,7 @@ export default function ProjectDetailPage() {
                 onValueChange={(value) =>
                   setAssignment((f) => ({
                     ...f,
-                    role: value as "Viewer" | "Editor",
+                    role: value as AssignableRole,
                   }))
                 }
               >
@@ -387,6 +399,7 @@ export default function ProjectDetailPage() {
                 <SelectContent>
                   <SelectItem value="Viewer">Viewer</SelectItem>
                   <SelectItem value="Editor">Editor</SelectItem>
+                  <SelectItem value="Manager">Manager</SelectItem>
                 </SelectContent>
               </Select>
             </div>

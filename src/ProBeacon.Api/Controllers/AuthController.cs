@@ -18,21 +18,38 @@ public class AuthController(ICurrentUser currentUser) : ApiControllerBase
 {
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginCommand command, CancellationToken cancellationToken)
-        => Ok(await Sender.Send(command, cancellationToken));
+    {
+        var result = await Sender.Send(command, cancellationToken);
+        SetRefreshCookie(result.RefreshToken!);
+        return Ok(result with { RefreshToken = null });
+    }
 
     [HttpPost("signup")]
     public async Task<IActionResult> Signup(SignupCommand command, CancellationToken cancellationToken)
-        => Ok(await Sender.Send(command, cancellationToken));
+    {
+        var result = await Sender.Send(command, cancellationToken);
+        SetRefreshCookie(result.RefreshToken!);
+        return Ok(result with { RefreshToken = null });
+    }
 
     [HttpPost("refresh")]
-    public async Task<IActionResult> Refresh(RefreshTokenCommand command, CancellationToken cancellationToken)
-        => Ok(await Sender.Send(command, cancellationToken));
+    public async Task<IActionResult> Refresh(CancellationToken cancellationToken)
+    {
+        var refreshToken = Request.Cookies[RefreshCookieName];
+        if (string.IsNullOrEmpty(refreshToken))
+            return Unauthorized();
+
+        var result = await Sender.Send(new RefreshTokenCommand(refreshToken), cancellationToken);
+        SetRefreshCookie(result.RefreshToken!);
+        return Ok(result with { RefreshToken = null });
+    }
 
     [Authorize]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
         await Sender.Send(new LogoutCommand(), cancellationToken);
+        ClearRefreshCookie();
         return NoContent();
     }
 
@@ -66,7 +83,11 @@ public class AuthController(ICurrentUser currentUser) : ApiControllerBase
 
     [HttpPost("set-password")]
     public async Task<IActionResult> SetPassword([FromBody] SetPasswordCommand command, CancellationToken cancellationToken)
-        => Ok(await Sender.Send(command, cancellationToken));
+    {
+        var result = await Sender.Send(command, cancellationToken);
+        SetRefreshCookie(result.RefreshToken!);
+        return Ok(result with { RefreshToken = null });
+    }
 
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPassword([FromBody] RequestPasswordResetCommand command, CancellationToken cancellationToken)

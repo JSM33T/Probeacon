@@ -19,6 +19,7 @@ public class SetupController(SetupState setupState) : ApiControllerBase
     {
         var result = await Sender.Send(command, cancellationToken);
         setupState.MarkConfigured();
-        return Ok(result);
+        SetRefreshCookie(result.RefreshToken!);
+        return Ok(result with { RefreshToken = null });
     }
 }

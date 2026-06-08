@@ -1,4 +1,4 @@
-import { clearSession, getRefreshToken, getSessionId, getToken, setSession, setToken } from "./auth"
+import { clearSession, getToken, refreshSession } from "./auth"
 
 export class ApiError extends Error {
   constructor(
@@ -10,44 +10,6 @@ export class ApiError extends Error {
   }
 }
 
-let refreshPromise: Promise<boolean> | null = null
-
-async function tryRefresh(): Promise<boolean> {
-  if (refreshPromise) return refreshPromise
-
-  refreshPromise = (async () => {
-    const refreshToken = getRefreshToken()
-    const sessionId = getSessionId()
-    if (!refreshToken || !sessionId) return false
-
-    try {
-      const res = await fetch("/api/auth/refresh", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId, refreshToken }),
-      })
-
-      if (res.status === 410) {
-        clearSession()
-        window.location.href = "/expired"
-        return false
-      }
-
-      if (!res.ok) return false
-
-      const data = await res.json()
-      setSession(data.accessToken, data.refreshToken, sessionId)
-      return true
-    } catch {
-      return false
-    } finally {
-      refreshPromise = null
-    }
-  })()
-
-  return refreshPromise
-}
-
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken()
   const headers: Record<string, string> = { "Content-Type": "application/json" }
@@ -56,7 +18,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(path, { ...init, headers: { ...headers, ...init?.headers } })
 
   if (res.status === 401) {
-    const refreshed = await tryRefresh()
+    const refreshed = await refreshSession()
     if (refreshed) {
       const newToken = getToken()
       const retryHeaders: Record<string, string> = { "Content-Type": "application/json" }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using ProBeacon.Api.Authorization;
 using ProBeacon.Application.Users.Commands.CreateUser;
 using ProBeacon.Application.Users.Commands.DeactivateUser;
+using ProBeacon.Application.Users.Commands.DemoteToMember;
 using ProBeacon.Application.Users.Commands.PromoteToAdmin;
 using ProBeacon.Application.Users.Commands.ReactivateUser;
 using ProBeacon.Application.Users.Commands.ResetUserPassword;
@@ -51,6 +52,14 @@ public class UsersController : ApiControllerBase
     public async Task<IActionResult> Promote(Guid userId, CancellationToken cancellationToken)
     {
         await Sender.Send(new PromoteToAdminCommand(userId), cancellationToken);
+        return NoContent();
+    }
+
+    [Authorize(Policy = AuthorizationPolicies.AdminOnly)]
+    [HttpPost("{userId:guid}/demote")]
+    public async Task<IActionResult> Demote(Guid userId, CancellationToken cancellationToken)
+    {
+        await Sender.Send(new DemoteToMemberCommand(userId), cancellationToken);
         return NoContent();
     }
 

@@ -14,11 +14,13 @@ public class RefreshTokenCommandHandler(
     {
         var tokenHash = tokenService.HashRefreshToken(request.RefreshToken);
 
+        // The opaque refresh token is cryptographically random, so its hash uniquely
+        // identifies the session — no session id needed (it now lives only in the cookie).
         var session = await db.UserSessions
             .Include(s => s.User)
             .ThenInclude(u => u.Tenant)
             .FirstOrDefaultAsync(
-                s => s.Id == request.SessionId && s.RefreshTokenHash == tokenHash,
+                s => s.RefreshTokenHash == tokenHash,
                 cancellationToken);
 
         if (session is null || session.IsRevoked || session.ExpiresAt < DateTime.UtcNow)

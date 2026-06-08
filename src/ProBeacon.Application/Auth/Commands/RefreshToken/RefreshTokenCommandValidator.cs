@@ -6,9 +6,6 @@ public class RefreshTokenCommandValidator : AbstractValidator<RefreshTokenComman
 {
     public RefreshTokenCommandValidator()
     {
-        RuleFor(command => command.SessionId)
-            .NotEmpty();
-
         RuleFor(command => command.RefreshToken)
             .Must(value => !string.IsNullOrWhiteSpace(value))
             .WithMessage("Refresh token is required.");

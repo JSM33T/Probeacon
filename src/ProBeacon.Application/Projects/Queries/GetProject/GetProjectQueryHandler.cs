@@ -1,6 +1,7 @@
 using Mediator;
 using Microsoft.EntityFrameworkCore;
 using ProBeacon.Application.Common.Interfaces;
+using ProBeacon.Domain.Enums;
 
 namespace ProBeacon.Application.Projects.Queries.GetProject;
 
@@ -27,7 +28,9 @@ public class GetProjectQueryHandler(
                     ? "Full access"
                     : project.Members
                         .Where(member => member.UserId == currentUser.UserId && member.User.IsActive)
-                        .Select(member => member.CanEdit ? "Editor" : "Viewer")
+                        .Select(member => member.Role == ProjectRole.Manager ? "Manager"
+                            : member.Role == ProjectRole.Editor ? "Editor"
+                            : "Viewer")
                         .FirstOrDefault() ?? "Viewer",
                 project.Members.Count(member => member.User.IsActive)))
             .FirstAsync(cancellationToken);

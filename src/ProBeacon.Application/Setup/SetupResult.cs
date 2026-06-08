@@ -3,7 +3,7 @@ namespace ProBeacon.Application.Setup;
 public record SetupResult(
     string AccessToken,
     DateTime ExpiresAt,
-    string RefreshToken,
+    string? RefreshToken,
     Guid SessionId,
     Guid TenantId,
     string TenantSlug,

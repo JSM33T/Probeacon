@@ -1,7 +1,7 @@
 import { type FormEvent, useState } from "react"
 import { Link, redirect, useLoaderData, useNavigate } from "react-router"
 import { api } from "~/lib/api"
-import { getToken, setSession } from "~/lib/auth"
+import { ensureSession, setToken } from "~/lib/auth"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
@@ -19,7 +19,7 @@ interface SetupStatus {
 }
 
 export async function clientLoader() {
-  if (getToken()) return redirect("/dashboard")
+  if (await ensureSession()) return redirect("/dashboard")
   const status = await api.get<SetupStatus>("/api/setup/status")
   if (status.deploymentMode === "SelfHosted" && !status.configured) {
     return redirect("/setup")
@@ -52,12 +52,8 @@ export default function LoginPage() {
     setError(null)
     setLoading(true)
     try {
-      const res = await api.post<{
-        accessToken: string
-        refreshToken: string
-        sessionId: string
-      }>("/api/auth/login", form)
-      setSession(res.accessToken, res.refreshToken, res.sessionId)
+      const res = await api.post<{ accessToken: string }>("/api/auth/login", form)
+      setToken(res.accessToken)
       navigate("/dashboard", { replace: true })
     } catch (err) {
       setError(err instanceof Error ? err.message : "Invalid email or password.")

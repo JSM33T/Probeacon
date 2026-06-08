@@ -3,7 +3,7 @@ import { useLoaderData, useRevalidator } from "react-router"
 import { TriangleAlert } from "lucide-react"
 import { toast } from "sonner"
 import { api } from "~/lib/api"
-import { getRefreshToken, getSessionId, setSession } from "~/lib/auth"
+import { refreshSession } from "~/lib/auth"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
@@ -59,20 +59,9 @@ export default function ProfilePage() {
   const [pwSaving, setPwSaving] = useState(false)
 
   async function refreshJwt() {
-    const refreshToken = getRefreshToken()
-    const sessionId = getSessionId()
-    if (!refreshToken || !sessionId) return
-    try {
-      const res = await api.post<{
-        accessToken: string
-        refreshToken: string
-        expiresAt: string
-      }>("/api/auth/refresh", { sessionId, refreshToken })
-      setSession(res.accessToken, res.refreshToken, sessionId)
-      revalidate()
-    } catch {
-      // non-fatal — user will see correct values on next login
-    }
+    // Re-mint the access token (via the refresh cookie) so updated claims show immediately.
+    // Non-fatal — correct values otherwise appear on the next refresh/login.
+    if (await refreshSession()) revalidate()
   }
 
   const saveInfo = async (e: FormEvent) => {
