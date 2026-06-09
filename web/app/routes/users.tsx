@@ -90,14 +90,6 @@ export async function clientLoader() {
   return { users, currentUser: getUser() }
 }
 
-export function HydrateFallback() {
-  return (
-    <div className="flex min-h-[200px] items-center justify-center">
-      <span className="text-sm text-muted-foreground">Loading...</span>
-    </div>
-  )
-}
-
 export default function TeamPage() {
   const { users, currentUser } = useLoaderData<typeof clientLoader>()
   const { revalidate } = useRevalidator()

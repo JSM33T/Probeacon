@@ -1,5 +1,8 @@
 packages: []
 
+# pnpm 10+ ignores the package.json "pnpm" field — build-script approvals live here.
+# Without these, fresh/CI installs (Docker) fail with ERR_PNPM_IGNORED_BUILDS.
+# esbuild needs its build step; msw is intentionally not built.
 allowBuilds:
   esbuild: true
   msw: false

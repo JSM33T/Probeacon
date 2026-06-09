@@ -28,14 +28,6 @@ export async function clientLoader() {
   return { lifetimeHours: status.demoWorkspaceLifetimeHours }
 }
 
-export function HydrateFallback() {
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <span className="text-sm text-muted-foreground">Loading...</span>
-    </div>
-  )
-}
-
 export default function SignupPage() {
   const { lifetimeHours } = useLoaderData<typeof clientLoader>()
   const navigate = useNavigate()

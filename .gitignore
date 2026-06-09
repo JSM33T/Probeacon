@@ -16,6 +16,9 @@ publish/
 !packages.lock.json
 launchSettings.json
 
+# Built React SPA dropped here at build time (Docker) or for local testing
+src/ProBeacon.Api/wwwroot/
+
 # ========================
 # Node.js / Next.js
 # ========================

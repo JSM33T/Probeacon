@@ -27,14 +27,6 @@ export async function clientLoader() {
   return { deploymentMode: status.deploymentMode }
 }
 
-export function HydrateFallback() {
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <span className="text-sm text-muted-foreground">Loading...</span>
-    </div>
-  )
-}
-
 export default function LoginPage() {
   const { deploymentMode } = useLoaderData<typeof clientLoader>()
   const navigate = useNavigate()

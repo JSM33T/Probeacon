@@ -96,14 +96,6 @@ export async function clientLoader({ params }: { params: { projectId: string } }
   return { project, members, users, user }
 }
 
-export function HydrateFallback() {
-  return (
-    <div className="flex min-h-[200px] items-center justify-center">
-      <span className="text-sm text-muted-foreground">Loading...</span>
-    </div>
-  )
-}
-
 export default function ProjectDetailPage() {
   const { project, members, users, user } = useLoaderData<typeof clientLoader>()
   const { revalidate } = useRevalidator()

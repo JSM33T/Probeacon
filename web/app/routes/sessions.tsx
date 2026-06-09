@@ -21,14 +21,6 @@ export async function clientLoader() {
   return { sessions, user: getUser() }
 }
 
-export function HydrateFallback() {
-  return (
-    <div className="flex min-h-[200px] items-center justify-center">
-      <span className="text-sm text-muted-foreground">Loading sessions…</span>
-    </div>
-  )
-}
-
 function parseDevice(userAgent: string): { label: string; isMobile: boolean } {
   const ua = userAgent.toLowerCase()
   const isMobile = /mobile|android|iphone|ipad/.test(ua)

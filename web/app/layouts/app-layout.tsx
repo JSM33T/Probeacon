@@ -81,14 +81,6 @@ export async function clientLoader() {
   return { user: getUser() }
 }
 
-export function HydrateFallback() {
-  return (
-    <div className="flex min-h-screen items-center justify-center">
-      <span className="text-sm text-muted-foreground">Loading...</span>
-    </div>
-  )
-}
-
 type NavItem = {
   title: string
   href?: string

@@ -19,6 +19,14 @@ public class SetupGuardMiddleware(
             return;
         }
 
+        // Only the API is gated by setup state. Static assets and SPA routes always load —
+        // the client checks /api/setup/status and routes itself to /setup.
+        if (!context.Request.Path.StartsWithSegments("/api", StringComparison.OrdinalIgnoreCase))
+        {
+            await next(context);
+            return;
+        }
+
         // Cache check - only hit DB once.
         if (!setupState.IsConfigured.HasValue)
         {

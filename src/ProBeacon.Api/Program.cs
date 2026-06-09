@@ -63,9 +63,30 @@ if (app.Environment.IsDevelopment())
 
 app.UseExceptionHandler();
 app.UseHttpsRedirection();
+
+// Serve the built React SPA from wwwroot. Placed before the setup guard so the app shell
+// and its assets always load (the client routes itself to /setup when needed).
+app.UseDefaultFiles();
+app.UseStaticFiles();
+
 app.UseMiddleware<SetupGuardMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// SPA fallback: any route that isn't a real file and isn't under /api returns index.html,
+// so React Router handles it client-side. Unknown /api routes stay a real 404.
+var indexHtmlPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "index.html");
+app.MapFallback(async context =>
+{
+    if (context.Request.Path.StartsWithSegments("/api") || !File.Exists(indexHtmlPath))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+
+    context.Response.ContentType = "text/html";
+    await context.Response.SendFileAsync(indexHtmlPath);
+});
 
 app.Run();

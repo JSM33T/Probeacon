@@ -33,6 +33,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
   )
 }
 
+// SPA mode: a single app-wide fallback shown during the initial client hydration.
+// (Per-route HydrateFallback isn't allowed in SPA mode.)
+export function HydrateFallback() {
+  return (
+    <div className="flex min-h-screen items-center justify-center">
+      <span className="text-sm text-muted-foreground">Loading...</span>
+    </div>
+  )
+}
+
 export default function App() {
   return <Outlet />
 }
