@@ -2,7 +2,7 @@
 
 Base URLs:
 - **Local dev:** `http://localhost:5214`
-- **Docker:** `http://localhost:8080`
+- **Docker:** `http://localhost:8081`
 
 Replace `{{base}}` with whichever you're using.
 
