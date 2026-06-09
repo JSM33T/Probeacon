@@ -20,36 +20,60 @@ interface SmtpStatus {
 
 export async function clientLoader() {
   const user = getUser()
-  const smtp = await api.get<SmtpStatus>("/api/settings/smtp")
-  return { user, smtpConfigured: smtp.isConfigured }
+  // SMTP status is an admin-only setting that only feeds the admin setup checklist.
+  // Members can't read it (403) and don't need it, so skip the call for them.
+  const smtpConfigured =
+    user?.role === "Admin"
+      ? (await api.get<SmtpStatus>("/api/settings/smtp")).isConfigured
+      : true
+  return { user, smtpConfigured }
 }
 
-const quickLinks = [
+type QuickLink = {
+  title: string
+  description: string
+  to: string | null
+  enabled: boolean
+  adminOnly: boolean
+}
+
+const quickLinks: QuickLink[] = [
   {
     title: "Settings",
     description: "Manage organization settings",
     to: "/settings",
     enabled: true,
+    adminOnly: true,
   },
   {
     title: "Projects",
     description: "Manage project workspaces",
     to: "/projects",
     enabled: true,
+    adminOnly: false,
   },
-  { title: "Probes", description: "Coming soon", to: null, enabled: false },
+  {
+    title: "Probes",
+    description: "Coming soon",
+    to: null,
+    enabled: false,
+    adminOnly: false,
+  },
   {
     title: "Team",
     description: "Invite and manage users",
     to: "/users",
     enabled: true,
+    adminOnly: true,
   },
 ]
 
 export default function DashboardPage() {
   const { user, smtpConfigured } = useLoaderData<typeof clientLoader>()
+  const isAdmin = user?.role === "Admin"
   const hasRealEmail = user?.email.includes("@") ?? false
   const emailVerified = user?.emailVerified ?? false
+  const visibleLinks = quickLinks.filter((card) => !card.adminOnly || isAdmin)
 
   type ChecklistItem = {
     key: string
@@ -153,7 +177,7 @@ export default function DashboardPage() {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        {quickLinks.map((card) =>
+        {visibleLinks.map((card) =>
           card.enabled && card.to ? (
             <Link key={card.title} to={card.to}>
               <Card

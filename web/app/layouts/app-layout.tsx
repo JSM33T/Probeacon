@@ -128,13 +128,12 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    title: "Admin",
+    title: "Settings",
     icon: Settings,
     items: [
-      { title: "Settings", href: "/settings", icon: Settings },
-      { title: "Authentication", href: "/auth-config", icon: KeyRound },
+      { title: "General", href: "/settings", icon: Settings, adminOnly: true },
+      { title: "Authentication", href: "/auth-config", icon: KeyRound, adminOnly: true },
       { title: "Sessions", href: "/sessions", icon: ShieldCheck },
-      { title: "Data Sources", icon: Database, badge: "Soon", disabled: true },
     ],
   },
 ]
