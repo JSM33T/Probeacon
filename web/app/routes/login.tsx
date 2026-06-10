@@ -1,6 +1,6 @@
 import { type FormEvent, useState } from "react"
 import { Link, redirect, useLoaderData, useNavigate } from "react-router"
-import { api } from "~/lib/api"
+import { api, ApiError } from "~/lib/api"
 import { ensureSession, setToken } from "~/lib/auth"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
@@ -31,7 +31,7 @@ export default function LoginPage() {
   const { deploymentMode } = useLoaderData<typeof clientLoader>()
   const navigate = useNavigate()
   const [form, setForm] = useState({ email: "", password: "" })
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{ text: string; throttled: boolean } | null>(null)
   const [loading, setLoading] = useState(false)
   const isOnlineDemo = deploymentMode === "OnlineDemo"
 
@@ -48,7 +48,12 @@ export default function LoginPage() {
       setToken(res.accessToken)
       navigate("/dashboard", { replace: true })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid email or password.")
+      // A 429 is a throttle (rate limit or account lockout) — "wait", not "wrong credentials".
+      const throttled = err instanceof ApiError && err.status === 429
+      setError({
+        text: err instanceof Error ? err.message : "Invalid email or password.",
+        throttled,
+      })
     } finally {
       setLoading(false)
     }
@@ -100,7 +105,17 @@ export default function LoginPage() {
                   required
                 />
               </div>
-              {error && <p className="text-sm text-destructive">{error}</p>}
+              {error && (
+                <p
+                  className={
+                    error.throttled
+                      ? "text-sm text-amber-600 dark:text-amber-500"
+                      : "text-sm text-destructive"
+                  }
+                >
+                  {error.text}
+                </p>
+              )}
               <Button type="submit" disabled={loading} className="mt-1 w-full">
                 {loading ? "Signing in..." : "Sign in"}
               </Button>

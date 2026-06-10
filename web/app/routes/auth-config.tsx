@@ -26,9 +26,19 @@ interface SmtpSettings {
   isConfigured: boolean
 }
 
+interface LockoutSettings {
+  enabled: boolean
+  maxAttempts: number
+  baseMinutes: number
+  maxMinutes: number
+}
+
 export async function clientLoader() {
-  const smtp = await api.get<SmtpSettings>("/api/settings/smtp")
-  return { smtp }
+  const [smtp, lockout] = await Promise.all([
+    api.get<SmtpSettings>("/api/settings/smtp"),
+    api.get<LockoutSettings>("/api/settings/lockout"),
+  ])
+  return { smtp, lockout }
 }
 
 // ── method registry ──────────────────────────────────────────────────────────
@@ -247,10 +257,123 @@ function SmtpPanel({ initial }: { initial: SmtpSettings }) {
   )
 }
 
+// ── account-lockout panel ────────────────────────────────────────────────────
+
+function LockoutPanel({ initial }: { initial: LockoutSettings }) {
+  const [form, setForm] = useState(initial)
+  const [saving, setSaving] = useState(false)
+
+  const num =
+    (key: "maxAttempts" | "baseMinutes" | "maxMinutes") =>
+    (e: React.ChangeEvent<HTMLInputElement>) =>
+      setForm((f) => ({ ...f, [key]: Number(e.target.value) }))
+
+  const save = async (e: FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      const updated = await api.put<LockoutSettings>(
+        "/api/settings/lockout",
+        form
+      )
+      setForm(updated)
+      toast.success("Lockout settings saved")
+    } catch (err: unknown) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to save lockout settings."
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={save} className="space-y-4">
+      <div className="flex items-center justify-between rounded-lg border px-4 py-3">
+        <div>
+          <p className="text-sm font-medium">Lock accounts after failed sign-ins</p>
+          <p className="text-xs text-muted-foreground">
+            When on, repeated wrong passwords temporarily lock the account.
+          </p>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={form.enabled}
+          onClick={() => setForm((f) => ({ ...f, enabled: !f.enabled }))}
+          className={cn(
+            "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+            form.enabled ? "bg-primary" : "bg-input"
+          )}
+        >
+          <span
+            className={cn(
+              "pointer-events-none inline-block size-5 rounded-full bg-background shadow-lg ring-0 transition-transform",
+              form.enabled ? "translate-x-5" : "translate-x-0"
+            )}
+          />
+        </button>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="lockout-attempts">Max failed attempts</Label>
+          <Input
+            id="lockout-attempts"
+            type="number"
+            min={1}
+            max={100}
+            value={form.maxAttempts}
+            onChange={num("maxAttempts")}
+            disabled={!form.enabled}
+            required
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="lockout-base">Base lockout (min)</Label>
+          <Input
+            id="lockout-base"
+            type="number"
+            min={1}
+            max={1440}
+            value={form.baseMinutes}
+            onChange={num("baseMinutes")}
+            disabled={!form.enabled}
+            required
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="lockout-max">Max lockout (min)</Label>
+          <Input
+            id="lockout-max"
+            type="number"
+            min={1}
+            max={1440}
+            value={form.maxMinutes}
+            onChange={num("maxMinutes")}
+            disabled={!form.enabled}
+            required
+          />
+        </div>
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        After {form.maxAttempts} failed attempts the account locks for{" "}
+        {form.baseMinutes} min, doubling on each further failure up to{" "}
+        {form.maxMinutes} min. A successful sign-in clears it.
+      </p>
+
+      <Button type="submit" disabled={saving}>
+        {saving ? "Saving…" : "Save"}
+      </Button>
+    </form>
+  )
+}
+
 // ── page ─────────────────────────────────────────────────────────────────────
 
 export default function AuthConfigPage() {
-  const { smtp } = useLoaderData<typeof clientLoader>()
+  const { smtp, lockout } = useLoaderData<typeof clientLoader>()
   const [selected, setSelected] = useState<MethodKey>("email")
 
   return (
@@ -331,6 +454,19 @@ export default function AuthConfigPage() {
           </CardContent>
         </Card>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Account lockout</CardTitle>
+          <CardDescription>
+            Throttle brute-force sign-in attempts per account. Changes apply
+            immediately — no restart needed.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <LockoutPanel initial={lockout} />
+        </CardContent>
+      </Card>
     </div>
   )
 }

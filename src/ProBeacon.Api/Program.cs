@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using ProBeacon.Api.Authorization;
 using ProBeacon.Api.Middleware;
+using ProBeacon.Api.RateLimiting;
 using ProBeacon.Api.Services;
 using ProBeacon.Application;
 using ProBeacon.Infrastructure;
@@ -19,6 +20,7 @@ builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddSingleton<SetupState>();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddProBeaconRateLimiting();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(opts =>
@@ -74,6 +76,7 @@ app.UseStaticFiles();
 app.UseMiddleware<SetupGuardMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 app.MapControllers();
 
 // SPA fallback: any route that isn't a real file and isn't under /api returns index.html,

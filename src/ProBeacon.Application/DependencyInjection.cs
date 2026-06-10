@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<ITenantProvisioner, TenantProvisioner>();
         services.AddScoped<IProjectAccessService, ProjectAccessService>();
         services.AddScoped<IPasswordSetupMailer, PasswordSetupMailer>();
+        services.AddScoped<ILockoutPolicyProvider, LockoutPolicyProvider>();
 
         return services;
     }

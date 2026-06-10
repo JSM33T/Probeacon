@@ -6,9 +6,11 @@ using ProBeacon.Api.Services;
 using ProBeacon.Application.Auth.Commands.TestSmtp;
 using ProBeacon.Application.Settings.Commands.DeleteSetting;
 using ProBeacon.Application.Settings.Commands.ImportSettings;
+using ProBeacon.Application.Settings.Commands.UpsertLockoutSettings;
 using ProBeacon.Application.Settings.Commands.UpsertSetting;
 using ProBeacon.Application.Settings.Commands.UpsertSmtpSettings;
 using ProBeacon.Application.Settings.Queries.ExportSettings;
+using ProBeacon.Application.Settings.Queries.GetLockoutSettings;
 using ProBeacon.Application.Settings.Queries.GetSettings;
 using ProBeacon.Application.Settings.Queries.GetSmtpSettings;
 
@@ -76,6 +78,14 @@ public class SettingsController : ApiControllerBase
     [HttpPost("smtp/test")]
     public async Task<IActionResult> TestSmtp(CancellationToken cancellationToken)
         => Ok(await Sender.Send(new TestSmtpCommand(), cancellationToken));
+
+    [HttpGet("lockout")]
+    public async Task<IActionResult> GetLockout(CancellationToken cancellationToken)
+        => Ok(await Sender.Send(new GetLockoutSettingsQuery(), cancellationToken));
+
+    [HttpPut("lockout")]
+    public async Task<IActionResult> UpsertLockout(UpsertLockoutSettingsCommand command, CancellationToken cancellationToken)
+        => Ok(await Sender.Send(command, cancellationToken));
 }
 
 public record ImportSettingsRequest(string Content, bool Replace);

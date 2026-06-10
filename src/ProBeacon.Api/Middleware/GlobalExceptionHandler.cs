@@ -1,3 +1,4 @@
+using System.Globalization;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -35,6 +36,7 @@ public sealed class GlobalExceptionHandler(
             ConflictException => StatusCodes.Status409Conflict,
             EmailNotConfiguredException => StatusCodes.Status409Conflict,
             WorkspaceExpiredException => StatusCodes.Status410Gone,
+            TooManyRequestsException => StatusCodes.Status429TooManyRequests,
             InvalidOperationException => StatusCodes.Status400BadRequest,
             ArgumentException => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status500InternalServerError
@@ -46,6 +48,10 @@ public sealed class GlobalExceptionHandler(
             logger.LogWarning(exception, "Request failed with handled exception.");
 
         httpContext.Response.StatusCode = statusCode;
+
+        if (exception is TooManyRequestsException { RetryAfter: { } retryAfter })
+            httpContext.Response.Headers.RetryAfter =
+                ((int)Math.Ceiling(retryAfter.TotalSeconds)).ToString(CultureInfo.InvariantCulture);
 
         var problemDetails = new ProblemDetails
         {
@@ -101,6 +107,7 @@ public sealed class GlobalExceptionHandler(
         StatusCodes.Status404NotFound => "Not Found",
         StatusCodes.Status409Conflict => "Conflict",
         StatusCodes.Status410Gone => "Workspace Expired",
+        StatusCodes.Status429TooManyRequests => "Too Many Requests",
         _ => "Internal Server Error"
     };
 }

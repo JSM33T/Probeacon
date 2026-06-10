@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using ProBeacon.Api.RateLimiting;
 using ProBeacon.Application.Auth.Commands.Login;
 using ProBeacon.Application.Auth.Commands.Logout;
 using ProBeacon.Application.Auth.Commands.LogoutAll;
@@ -17,6 +19,7 @@ namespace ProBeacon.Api.Controllers;
 
 public class AuthController(ICurrentUser currentUser) : ApiControllerBase
 {
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginCommand command, CancellationToken cancellationToken)
     {
@@ -25,6 +28,7 @@ public class AuthController(ICurrentUser currentUser) : ApiControllerBase
         return Ok(result with { RefreshToken = null });
     }
 
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
     [HttpPost("signup")]
     public async Task<IActionResult> Signup(SignupCommand command, CancellationToken cancellationToken)
     {
@@ -33,6 +37,7 @@ public class AuthController(ICurrentUser currentUser) : ApiControllerBase
         return Ok(result with { RefreshToken = null });
     }
 
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
     [HttpPost("refresh")]
     public async Task<IActionResult> Refresh(CancellationToken cancellationToken)
     {
@@ -77,6 +82,7 @@ public class AuthController(ICurrentUser currentUser) : ApiControllerBase
     }
 
     [Authorize]
+    [EnableRateLimiting(RateLimitPolicies.AuthSensitive)]
     [HttpPost("send-verification")]
     public async Task<IActionResult> SendVerification(CancellationToken cancellationToken)
     {
@@ -84,6 +90,7 @@ public class AuthController(ICurrentUser currentUser) : ApiControllerBase
         return NoContent();
     }
 
+    [EnableRateLimiting(RateLimitPolicies.AuthSensitive)]
     [HttpPost("verify-email")]
     public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailCommand command, CancellationToken cancellationToken)
     {
@@ -91,6 +98,7 @@ public class AuthController(ICurrentUser currentUser) : ApiControllerBase
         return NoContent();
     }
 
+    [EnableRateLimiting(RateLimitPolicies.Auth)]
     [HttpPost("set-password")]
     public async Task<IActionResult> SetPassword([FromBody] SetPasswordCommand command, CancellationToken cancellationToken)
     {
@@ -99,6 +107,7 @@ public class AuthController(ICurrentUser currentUser) : ApiControllerBase
         return Ok(result with { RefreshToken = null });
     }
 
+    [EnableRateLimiting(RateLimitPolicies.AuthSensitive)]
     [HttpPost("forgot-password")]
     public async Task<IActionResult> ForgotPassword([FromBody] RequestPasswordResetCommand command, CancellationToken cancellationToken)
     {
