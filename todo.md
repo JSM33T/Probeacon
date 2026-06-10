@@ -54,17 +54,14 @@ unthrottled → credential stuffing / email-bombing.
 - forgot-password + send-verification throttled per email/IP.
 **Touches:** `Program.cs`, `LoginCommandHandler`, auth endpoints.
 
-### [ ] 3. Self-hosted: invite/reset without SMTP
-**Why:** [CreateUserCommandHandler.cs:29](src/ProBeacon.Application/Users/Commands/CreateUser/CreateUserCommandHandler.cs)
-hard-throws `EmailNotConfiguredException` when SMTP is unset, so a fresh self-hosted instance
-**cannot add users at all**.
-**Done when:**
-- When SMTP is unconfigured, create-user (and admin reset) instead **return a copy-paste
-  set-password link** (or one-time temp password) for the admin to hand over.
-- Email path still used automatically when SMTP is configured.
-- UI surfaces the link to the admin.
-**Touches:** `CreateUserCommandHandler`, `SendPasswordSetupEmail`/`PasswordSetupMailer`,
-`ResetUserPasswordCommand`, `web/app/routes/users.tsx`.
+### [x] 3. Self-hosted: invite without SMTP  — DONE 2026-06-08
+**What shipped:** create-user no longer throws when SMTP is unset. `IPasswordSetupMailer` split
+into `IssueLinkAsync` (issue token + return `/set-password` link, no email) and `SendAsync`.
+`CreateUserCommandHandler` always issues the link; emails it when SMTP is configured, else
+returns it in `CreateUserResult.InviteLink`. `web/app/routes/users.tsx` shows a copy-paste link
+in the "Add user" result dialog when present. (Admin password **reset** already had an SMTP-less
+path — `ResetUserPasswordCommand` returns a temp password — so it was left as-is.)
+**Verified:** build + web typecheck green.
 
 ### [ ] 4. Refresh-token reuse detection
 **Why:** [RefreshTokenCommandHandler.cs](src/ProBeacon.Application/Auth/Commands/RefreshToken/RefreshTokenCommandHandler.cs)
@@ -93,14 +90,14 @@ today.
 **Done when:** explicit decision recorded (gate vs cosmetic); if gating, login/sensitive actions
 check verification, with a clear "verify your email" path.
 
-### [ ] 7. Add `logout-all` endpoint
-**Why:** `docs/auth.md` lists `POST /api/auth/logout-all`; only single-session logout and
-revoke-by-id exist today.
-**Done when:** endpoint revokes all of the current user's sessions.
+### [x] 7. Add `logout-all` endpoint  — DONE 2026-06-08
+`POST /api/auth/logout-all` ([LogoutAllCommand](src/ProBeacon.Application/Auth/Commands/LogoutAll/))
+revokes every active session for the current user and clears the refresh cookie. UI: "Sign out
+all devices" button on `web/app/routes/sessions.tsx` (clears client state → redirects to /login).
+Note: revoked sessions' access tokens still work until expiry — see item #5 (accepted window).
 
-### [ ] 8. Set JWT `ClockSkew` to ~30s
-**Why:** Default skew is 5 min, so a 15-min token really lives ~20 min.
-**Done when:** `TokenValidationParameters.ClockSkew` set explicitly in `Program.cs`.
+### [x] 8. Set JWT `ClockSkew` to ~30s  — DONE 2026-06-08
+`TokenValidationParameters.ClockSkew = TimeSpan.FromSeconds(30)` in `Program.cs`.
 
 ### [ ] 9. Strengthen password policy  — REVIEWED 2026-06-08
 **Finding:** all four validators (`SetupCommandValidator`, `SignupCommandValidator`,
@@ -137,6 +134,8 @@ Not yet scoped. Deferred, but required before "enterprise-grade."
 
 ## Notes
 - Reference design: [docs/auth.md](docs/auth.md), [docs/onboarding.md](docs/onboarding.md).
-- Recommended order: ~~1~~ done. Next: **2 → 3 → 4** (rate-limit and SMTP-fallback are small &
-  high-value; reuse detection is larger and should account for the multi-tab refresh race noted
-  under item 1).
+- Done so far: **1** (HttpOnly cookie), **3** (SMTP-less invite), **7** (logout-all), **8**
+  (clock skew). Foundation (user/project/auth) considered finalized for probe work to start.
+- Remaining hardening (can run alongside probes, no rework): **2** rate-limit · **4** reuse
+  detection (account for multi-tab refresh race) · **5** revocation window · **6** email-verify
+  decision · **9** password policy · **10** demo claim · **11** per-install JWT secret.

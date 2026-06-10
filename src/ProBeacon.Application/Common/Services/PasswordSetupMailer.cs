@@ -17,7 +17,7 @@ public class PasswordSetupMailer(
     private static readonly TimeSpan InviteLifetime = TimeSpan.FromDays(7);
     private static readonly TimeSpan ResetLifetime = TimeSpan.FromHours(1);
 
-    public async Task IssueAndSendAsync(User user, PasswordSetupKind kind, CancellationToken cancellationToken = default)
+    public async Task<string> IssueLinkAsync(User user, PasswordSetupKind kind, CancellationToken cancellationToken = default)
     {
         var (rawToken, tokenHash) = SecureToken.Generate();
         var lifetime = kind == PasswordSetupKind.Invite ? InviteLifetime : ResetLifetime;
@@ -27,13 +27,22 @@ public class PasswordSetupMailer(
         var baseUrl = string.IsNullOrWhiteSpace(appOptions.Value.FrontendUrl)
             ? requestContext.BaseUrl
             : appOptions.Value.FrontendUrl.TrimEnd('/');
-        var link = $"{baseUrl}/set-password?token={rawToken}";
+        return $"{baseUrl}/set-password?token={rawToken}";
+    }
 
+    public async Task SendAsync(User user, PasswordSetupKind kind, string link, CancellationToken cancellationToken = default)
+    {
         var (subject, html) = kind == PasswordSetupKind.Invite
             ? ("Set up your ProBeacon account", BuildInviteHtml(user.DisplayName, link))
             : ("Reset your ProBeacon password", BuildResetHtml(user.DisplayName, link));
 
         await publisher.PublishAsync(new EmailJob(user.TenantId, user.Email, subject, html), cancellationToken);
+    }
+
+    public async Task IssueAndSendAsync(User user, PasswordSetupKind kind, CancellationToken cancellationToken = default)
+    {
+        var link = await IssueLinkAsync(user, kind, cancellationToken);
+        await SendAsync(user, kind, link, cancellationToken);
     }
 
     private static string BuildInviteHtml(string name, string link) => BuildHtml(

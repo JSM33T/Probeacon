@@ -14,7 +14,7 @@ public class CreateUserCommandHandler(
     ICurrentUser currentUser,
     IPasswordHasher passwordHasher,
     IEmailSender emailSender,
-    ISender sender)
+    IPasswordSetupMailer mailer)
     : IRequestHandler<CreateUserCommand, CreateUserResult>
 {
     public async ValueTask<CreateUserResult> Handle(CreateUserCommand request, CancellationToken cancellationToken)
@@ -24,10 +24,6 @@ public class CreateUserCommandHandler(
         var emailTaken = await db.Users.AnyAsync(user => user.Email == email, cancellationToken);
         if (emailTaken)
             throw new ConflictException("Email is already in use.");
-
-        // Block up front so we never create a user whose invite email is silently dropped.
-        if (!await emailSender.IsConfiguredAsync(currentUser.TenantId, cancellationToken))
-            throw new EmailNotConfiguredException();
 
         // The account starts with an undisclosed random password — it can't be used until the
         // user sets their own password via the invite link below.
@@ -42,7 +38,12 @@ public class CreateUserCommandHandler(
         db.Users.Add(user);
         await db.SaveChangesAsync(cancellationToken);
 
-        await sender.Send(new SendPasswordSetupEmailCommand(user.Id, PasswordSetupKind.Invite), cancellationToken);
+        // Always issue the invite link. If SMTP is configured, email it; otherwise hand the link
+        // back so the admin can deliver it manually — self-hosted without email still works.
+        var link = await mailer.IssueLinkAsync(user, PasswordSetupKind.Invite, cancellationToken);
+        var smtpConfigured = await emailSender.IsConfiguredAsync(currentUser.TenantId, cancellationToken);
+        if (smtpConfigured)
+            await mailer.SendAsync(user, PasswordSetupKind.Invite, link, cancellationToken);
 
         return new CreateUserResult(
             new UserDto(
@@ -52,6 +53,7 @@ public class CreateUserCommandHandler(
                 user.Role.ToString(),
                 user.IsActive,
                 user.IsEmailVerified,
-                user.CreatedAt));
+                user.CreatedAt),
+            InviteLink: smtpConfigured ? null : link);
     }
 }

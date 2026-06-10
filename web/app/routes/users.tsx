@@ -71,6 +71,8 @@ interface TeamUser {
 
 interface CreateUserResult {
   user: TeamUser
+  // Present only when SMTP is unconfigured — the admin shares this set-password link manually.
+  inviteLink?: string | null
 }
 
 interface PasswordReveal {
@@ -112,7 +114,7 @@ export default function TeamPage() {
       const result = await api.post<CreateUserResult>("/api/users", form)
       setCreated(result)
       setForm({ displayName: "", email: "", role: "Member" })
-      toast.success("Invitation sent")
+      toast.success(result.inviteLink ? "Invite link ready" : "Invitation sent")
       await revalidate()
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create user.")
@@ -225,6 +227,13 @@ export default function TeamPage() {
     if (!password) return
     await navigator.clipboard.writeText(password)
     toast.success("Temporary password copied")
+  }
+
+  const copyInviteLink = async () => {
+    const link = created?.inviteLink
+    if (!link) return
+    await navigator.clipboard.writeText(link)
+    toast.success("Invite link copied")
   }
 
   return (
@@ -380,13 +389,37 @@ export default function TeamPage() {
             <div className="space-y-4">
               <div className="rounded-lg border bg-muted/40 p-4">
                 <p className="text-sm font-medium">{created.user.email}</p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Invitation sent. They'll set a password from the emailed link
-                  and be signed in straight away.
-                </p>
+                {created.inviteLink ? (
+                  <>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Email isn't configured, so share this set-password link with
+                      them directly. It won't be shown again.
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <code className="min-w-0 flex-1 truncate rounded-md bg-background px-3 py-2 text-xs">
+                        {created.inviteLink}
+                      </code>
+                      <Button size="icon" variant="outline" onClick={copyInviteLink}>
+                        <Copy className="size-4" />
+                      </Button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Invitation sent. They'll set a password from the emailed link
+                    and be signed in straight away.
+                  </p>
+                )}
               </div>
               <DialogFooter>
-                <Button onClick={() => setCreateOpen(false)}>Done</Button>
+                <Button
+                  onClick={() => {
+                    setCreated(null)
+                    setCreateOpen(false)
+                  }}
+                >
+                  Done
+                </Button>
               </DialogFooter>
             </div>
           ) : (

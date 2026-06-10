@@ -37,7 +37,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret)),
             NameClaimType = "sub",
-            RoleClaimType = "role"
+            RoleClaimType = "role",
+            // Tighten the default 5-min leeway so a 15-min token doesn't effectively live ~20.
+            ClockSkew = TimeSpan.FromSeconds(30)
         };
     });
 

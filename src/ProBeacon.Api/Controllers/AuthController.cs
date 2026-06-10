@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using ProBeacon.Application.Auth.Commands.Login;
 using ProBeacon.Application.Auth.Commands.Logout;
+using ProBeacon.Application.Auth.Commands.LogoutAll;
 using ProBeacon.Application.Auth.Commands.RefreshToken;
 using ProBeacon.Application.Auth.Commands.RequestPasswordReset;
 using ProBeacon.Application.Auth.Commands.RevokeSession;
@@ -49,6 +50,15 @@ public class AuthController(ICurrentUser currentUser) : ApiControllerBase
     public async Task<IActionResult> Logout(CancellationToken cancellationToken)
     {
         await Sender.Send(new LogoutCommand(), cancellationToken);
+        ClearRefreshCookie();
+        return NoContent();
+    }
+
+    [Authorize]
+    [HttpPost("logout-all")]
+    public async Task<IActionResult> LogoutAll(CancellationToken cancellationToken)
+    {
+        await Sender.Send(new LogoutAllCommand(), cancellationToken);
         ClearRefreshCookie();
         return NoContent();
     }

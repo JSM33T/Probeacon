@@ -1,8 +1,9 @@
 import { useState } from "react"
 import { useLoaderData } from "react-router"
-import { Monitor, Smartphone, Trash2 } from "lucide-react"
+import { LogOut, Monitor, Smartphone, Trash2 } from "lucide-react"
+import { toast } from "sonner"
 import { api } from "~/lib/api"
-import { getUser } from "~/lib/auth"
+import { clearSession, getUser } from "~/lib/auth"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { cn } from "~/lib/utils"
@@ -47,6 +48,7 @@ export default function SessionsPage() {
   const { sessions: initial } = useLoaderData<typeof clientLoader>()
   const [sessions, setSessions] = useState(initial)
   const [revoking, setRevoking] = useState<string | null>(null)
+  const [signingOutAll, setSigningOutAll] = useState(false)
 
   const revoke = async (id: string) => {
     setRevoking(id)
@@ -60,13 +62,37 @@ export default function SessionsPage() {
     }
   }
 
+  const signOutAll = async () => {
+    setSigningOutAll(true)
+    try {
+      await api.post("/api/auth/logout-all", {})
+      clearSession()
+      window.location.href = "/login"
+    } catch (err) {
+      setSigningOutAll(false)
+      toast.error(err instanceof Error ? err.message : "Could not sign out everywhere.")
+    }
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Active Sessions</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          All devices currently signed in to your account. Revoke any session you don't recognise.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold">Active Sessions</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            All devices currently signed in to your account. Revoke any session you don't recognise.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={signingOutAll}
+          onClick={signOutAll}
+          className="shrink-0 text-muted-foreground hover:text-destructive"
+        >
+          <LogOut className="size-4" />
+          {signingOutAll ? "Signing out..." : "Sign out all devices"}
+        </Button>
       </div>
 
       <Card>
