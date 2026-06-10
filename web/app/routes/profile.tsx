@@ -4,6 +4,7 @@ import { TriangleAlert } from "lucide-react"
 import { toast } from "sonner"
 import { api } from "~/lib/api"
 import { refreshSession } from "~/lib/auth"
+import { passwordError } from "~/lib/password"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
@@ -84,8 +85,9 @@ export default function ProfilePage() {
       toast.error("New passwords do not match")
       return
     }
-    if (pw.newPassword.length < 8) {
-      toast.error("Password must be at least 8 characters")
+    const pwError = passwordError(pw.newPassword)
+    if (pwError) {
+      toast.error(pwError)
       return
     }
 

@@ -2,6 +2,7 @@ import { type FormEvent, useState } from "react"
 import { Link, redirect, useLoaderData, useNavigate } from "react-router"
 import { api } from "~/lib/api"
 import { ensureSession, setToken } from "~/lib/auth"
+import { passwordError } from "~/lib/password"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
@@ -47,6 +48,11 @@ export default function SignupPage() {
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setError(null)
+    const pwError = passwordError(form.password)
+    if (pwError) {
+      setError(pwError)
+      return
+    }
     setLoading(true)
     try {
       const res = await api.post<{ accessToken: string }>("/api/auth/signup", form)

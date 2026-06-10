@@ -1,4 +1,5 @@
 using FluentValidation;
+using ProBeacon.Application.Common.Validation;
 
 namespace ProBeacon.Application.Users.Commands.UpdateProfile;
 
@@ -30,10 +31,7 @@ public class UpdateProfileCommandValidator : AbstractValidator<UpdateProfileComm
 
         When(command => command.NewPassword is not null, () =>
         {
-            RuleFor(command => command.NewPassword)
-                .Must(value => !string.IsNullOrWhiteSpace(value))
-                .WithMessage("New password cannot be empty.")
-                .MinimumLength(8);
+            RuleFor(command => command.NewPassword).Password();
 
             RuleFor(command => command.CurrentPassword)
                 .Must(value => !string.IsNullOrWhiteSpace(value))

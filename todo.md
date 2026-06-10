@@ -99,13 +99,16 @@ Note: revoked sessions' access tokens still work until expiry — see item #5 (a
 ### [x] 8. Set JWT `ClockSkew` to ~30s  — DONE 2026-06-08
 `TokenValidationParameters.ClockSkew = TimeSpan.FromSeconds(30)` in `Program.cs`.
 
-### [ ] 9. Strengthen password policy  — REVIEWED 2026-06-08
-**Finding:** all four validators (`SetupCommandValidator`, `SignupCommandValidator`,
-`SetPasswordCommandValidator`, and the profile change-password path) enforce only
-`MinimumLength(8)` + not-empty. **No complexity, no max length, no breach/zxcvbn check.** The
-client mirrors just the 8-char rule. So today the policy is weak-but-consistent.
-**Done when:** decide the bar (recommend: ≥10–12 chars, a max length ~128 to bound bcrypt/argon
-input, optional zxcvbn strength meter) and apply it consistently server + client.
+### [x] 9. Strengthen password policy  — DONE 2026-06-08
+**Policy:** min **10**, max **72** (bcrypt truncates beyond 72 bytes), must contain
+lowercase + uppercase + digit. **Centralized** in one place —
+[PasswordRules.Password()](src/ProBeacon.Application/Common/Validation/PasswordRules.cs) — and
+applied by all four server validators (setup, signup, set-password, profile change). Mirrored on
+the client via [web/app/lib/password.ts](web/app/lib/password.ts) `passwordError()`, used in
+setup / signup / set-password / profile forms. Login is untouched, so existing weaker passwords
+still work; the policy only bites when a new password is chosen.
+**Verified:** build + web typecheck + tests green.
+**Deferred:** zxcvbn strength meter and breach-list (HIBP) check — nice-to-have, not done.
 
 ### [ ] 10. Build demo "claim" (demo → permanent) flow  — CONFIRMED MISSING 2026-06-08
 **Finding:** no claim command/endpoint exists — every `claim` hit in `src` is JWT

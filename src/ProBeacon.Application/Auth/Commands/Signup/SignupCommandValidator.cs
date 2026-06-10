@@ -1,4 +1,5 @@
 using FluentValidation;
+using ProBeacon.Application.Common.Validation;
 
 namespace ProBeacon.Application.Auth.Commands.Signup;
 
@@ -19,9 +20,6 @@ public class SignupCommandValidator : AbstractValidator<SignupCommand>
             .WithMessage("Email is required.")
             .EmailAddress();
 
-        RuleFor(command => command.Password)
-            .Must(value => !string.IsNullOrWhiteSpace(value))
-            .WithMessage("Password is required.")
-            .MinimumLength(8);
+        RuleFor(command => command.Password).Password();
     }
 }

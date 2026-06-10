@@ -1,4 +1,5 @@
 using FluentValidation;
+using ProBeacon.Application.Common.Validation;
 
 namespace ProBeacon.Application.Auth.Commands.SetPassword;
 
@@ -10,9 +11,6 @@ public class SetPasswordCommandValidator : AbstractValidator<SetPasswordCommand>
             .Must(value => !string.IsNullOrWhiteSpace(value))
             .WithMessage("Token is required.");
 
-        RuleFor(command => command.Password)
-            .Must(value => !string.IsNullOrWhiteSpace(value))
-            .WithMessage("Password is required.")
-            .MinimumLength(8);
+        RuleFor(command => command.Password).Password();
     }
 }

@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router"
 import { XCircle } from "lucide-react"
 import { api } from "~/lib/api"
 import { setToken } from "~/lib/auth"
+import { passwordError } from "~/lib/password"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
@@ -30,8 +31,9 @@ export default function SetPasswordPage() {
     e.preventDefault()
     setError(null)
 
-    if (form.password.length < 8) {
-      setError("Password must be at least 8 characters.")
+    const pwError = passwordError(form.password)
+    if (pwError) {
+      setError(pwError)
       return
     }
     if (form.password !== form.confirm) {
@@ -97,7 +99,7 @@ export default function SetPasswordPage() {
                   type="password"
                   value={form.password}
                   onChange={set("password")}
-                  placeholder="At least 8 characters"
+                  placeholder="At least 10 chars, with a letter & number"
                   autoComplete="new-password"
                   required
                 />
